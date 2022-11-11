@@ -19,6 +19,8 @@
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
+// 가장 빨리 일어날 스레드의 wakeup_time을 저장.
+static int64_t next_tick_to_awake;
 
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
@@ -73,6 +75,7 @@ timer_calibrate (void) {
 /* Returns the number of timer ticks since the OS booted. */
 int64_t
 timer_ticks (void) {
+	// interrupt disable: intr_disable()
 	enum intr_level old_level = intr_disable ();
 	int64_t t = ticks;
 	intr_set_level (old_level);
@@ -88,13 +91,18 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+// ticks = 얼마나 더 재울지
+// insert the thread to sleep queue
+// timer interrupt handler 가 execute되면 커널은 어떤 스레드를 wake up 할건지 확인해야한다.
+// block list를 검사하면서, 로컬틱이 글로벌 틱보다 큰 스레드가 있는지 검사.
 void
 timer_sleep (int64_t ticks) {
+	// 부팅 후에 경과된 시간 반환.
 	int64_t start = timer_ticks ();
 
 	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+	if (timer_elapsed(start) < ticks)
+		thread_sleep(start + ticks);
 }
 
 /* Suspends execution for approximately MS milliseconds. */

@@ -27,6 +27,7 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+static struct list sleep_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -45,6 +46,10 @@ static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
+
+// 가장 빨리 일어날 스레드의 wakeup_time을 저장.
+static int64_t next_tick_to_awake;
+
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
@@ -62,6 +67,10 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
+void thread_sleep(int64_t ticks);
+void thread_awake(int64_t ticks);
+void update_next_tick_to_awake(int64_t ticks); 
+int64_t get_next_tick_to_awake(void); 
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -108,6 +117,7 @@ thread_init (void) {
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	list_init (&sleep_list);
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -296,16 +306,35 @@ thread_exit (void) {
    may be scheduled again immediately at the scheduler's whim. */
 void
 thread_yield (void) {
+	// 현재 스레드의 포인터 가져오기
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
 
 	ASSERT (!intr_context ());
 
+	// 인터럽트를 disable한다.
 	old_level = intr_disable ();
+	// 해당 스레드가 runnig state에 있었다면
 	if (curr != idle_thread)
+		// 여기서 ready list에 새로운 요소가 추가된다.
 		list_push_back (&ready_list, &curr->elem);
+	// 현재 스레드의 상태를 THREAD_READY로 변경하고
+	// context switch를 수행한다.
 	do_schedule (THREAD_READY);
+	// 원래의 상태(인터럽트 상태)로 되돌린다.
 	intr_set_level (old_level);
+}
+
+void thread_sleep(int64_t ticks){
+	struct thread *curr = thread_current ();
+
+	if (curr != idle_thread){
+		curr->status = THREAD_BLOCKED;
+		curr->wakeup_tick = ticks;
+		list_push_back (&sleep_list, &curr->elem);
+		get_next_tick_to_awake(ticks);
+	}
+
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
