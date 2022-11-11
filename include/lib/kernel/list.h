@@ -95,6 +95,7 @@ struct list {
 	struct list_elem tail;      /* List tail. */
 };
 
+// list_elem을 인자로 list_elem이 포함된 struct의 포인터를 반환한다
 /* Converts pointer to list element LIST_ELEM into a pointer to
    the structure that LIST_ELEM is embedded inside.  Supply the
    name of the outer structure STRUCT and the member name MEMBER

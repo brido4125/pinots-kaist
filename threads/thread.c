@@ -325,17 +325,17 @@ thread_yield (void) {
 	intr_set_level (old_level);
 }
 
+// ticks = 깨야하는 시간
 void thread_sleep(int64_t ticks){
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
 
 	if (curr != idle_thread){
-		curr->status = THREAD_BLOCKED;
 		curr->wakeup_tick = ticks;
 		list_push_back (&sleep_list, &curr->elem);
-		get_next_tick_to_awake(ticks);
+		update_next_tick_to_awake(ticks);
 	}
-	schedule ();
+	do_schedule (THREAD_BLOCKED);
 	intr_set_level (old_level);
 
 }
@@ -368,6 +368,7 @@ void update_next_tick_to_awake(int64_t ticks){
 
 int64_t get_next_tick_to_awake(void){
 	// next_tick_to_awake 을 반환한다.
+	return next_tick_to_awake;
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
