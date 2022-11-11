@@ -19,8 +19,7 @@
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
-// 가장 빨리 일어날 스레드의 wakeup_time을 저장.
-static int64_t next_tick_to_awake;
+
 
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
@@ -101,9 +100,9 @@ timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
 
 	ASSERT (intr_get_level () == INTR_ON);
-	if (timer_elapsed(start) < ticks)
-		thread_sleep(start + ticks);
+	thread_sleep(start + ticks);
 }
+
 
 /* Suspends execution for approximately MS milliseconds. */
 void
@@ -134,6 +133,25 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	// 깨어날 thread가 있는지 확인하여, 깨우는 함수를 호출.
+
+
+}
+
+// wakeup_tick값이 ticks보다 작거나 같은 스레드를 깨운다.
+void thread_awake(int64_t ticks){
+	// sleep list의 모든 entry 를 순회하며
+	// 현재 tick이 깨워야 할 tick 보다 크거나 같다면 슬립 큐에서 제거하고 unblock 한다.
+	// 작다면 update_next_tick_to_awake() 를 호출한다.
+
+}
+
+void update_next_tick_to_awake(int64_t ticks){
+	// next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다
+}
+
+int64_t get_next_tick_to_awake(void){
+	// next_tick_to_awake 을 반환한다.
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

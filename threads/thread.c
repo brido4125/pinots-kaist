@@ -48,7 +48,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 
 
 // 가장 빨리 일어날 스레드의 wakeup_time을 저장.
-static int64_t next_tick_to_awake;
+static int64_t next_tick_to_awake = 1 << 30;
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -327,6 +327,7 @@ thread_yield (void) {
 
 void thread_sleep(int64_t ticks){
 	struct thread *curr = thread_current ();
+	enum intr_level old_level;
 
 	if (curr != idle_thread){
 		curr->status = THREAD_BLOCKED;
@@ -334,7 +335,32 @@ void thread_sleep(int64_t ticks){
 		list_push_back (&sleep_list, &curr->elem);
 		get_next_tick_to_awake(ticks);
 	}
+	schedule ();
+	intr_set_level (old_level);
 
+}
+
+// wakeup_tick값이 global ticks보다 작거나 같은 스레드를 깨운다.
+void thread_awake(int64_t ticks){
+	int64_t curr_tick = timer_ticks ();
+	// sleep list의 모든 entry 를 순회하며
+	// global tick이 next_tick_to_awake 보다 크거나 같다면 슬립 큐에서 제거하고 unblock 한다.
+	// 작다면 update_next_tick_to_awake() 를 호출한다.
+	if (curr_tick >= next_tick_to_awake){
+		
+	}else{
+		update_next_tick_to_awake(ticks);
+	}
+
+
+}
+
+void update_next_tick_to_awake(int64_t ticks){
+	// next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다
+}
+
+int64_t get_next_tick_to_awake(void){
+	// next_tick_to_awake 을 반환한다.
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
