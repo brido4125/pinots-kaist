@@ -114,7 +114,7 @@ thread_init (void) {
 	};
 	lgdt (&gdt_ds);
 
-	/* Init the globla thread context */
+	/* Init the global thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&sleep_list);
@@ -343,20 +343,27 @@ void thread_sleep(int64_t ticks){
 // wakeup_tick값이 global ticks보다 작거나 같은 스레드를 깨운다.
 void thread_awake(int64_t ticks){
 	int64_t curr_tick = timer_ticks ();
-	// sleep list의 모든 entry 를 순회하며
-	// global tick이 next_tick_to_awake 보다 크거나 같다면 슬립 큐에서 제거하고 unblock 한다.
-	// 작다면 update_next_tick_to_awake() 를 호출한다.
-	if (curr_tick >= next_tick_to_awake){
-		
-	}else{
-		update_next_tick_to_awake(ticks);
+	
+	// sleep list의 모든 entry를 순회하며
+	for (e = list_begin (&sleep_list); e != list_end (&sleep_list); e = list_next (e)) {
+		struct thread *f = list_entry (e, struct thread, elem);
+		// global tick이 next_tick_to_awake 보다 크거나 같다면
+		if (curr_tick >= next_tick_to_awake){
+			// 슬립 큐에서 제거하고 unblock 한다.
+			list_remove(e);
+			f->status = THREAD_READY;
+			list_push_back(&ready_list, e);
+		}else{
+			// 작다면 update_next_tick_to_awake() 를 호출한다.
+			update_next_tick_to_awake(f->wakeup_tick);
+		}
 	}
-
 
 }
 
 void update_next_tick_to_awake(int64_t ticks){
 	// next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다
+	next_tick_to_awake = ticks;
 }
 
 int64_t get_next_tick_to_awake(void){
