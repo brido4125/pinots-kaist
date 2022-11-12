@@ -372,8 +372,6 @@ void thread_awake(int64_t ticks){
 			update_next_tick_to_awake(f->wakeup_tick);
 		}
 
-		
-
 	}
 
 }
