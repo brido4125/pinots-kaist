@@ -134,7 +134,10 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
 	// 깨어날 thread가 있는지 확인하여, 깨우는 함수를 호출.
-	thread_awake();
+	if (ticks >= get_next_tick_to_awake()){
+		thread_awake(ticks);
+	}
+	
 
 }
 
