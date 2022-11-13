@@ -133,7 +133,6 @@ thread_init (void) {
 void
 thread_start (void) {
 	/* Create the idle thread. */
-	printf("thread start \n");
 	struct semaphore idle_started;
 	sema_init (&idle_started, 0);
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
@@ -217,7 +216,11 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 
 	/* Add to run queue. */
-	thread_unblock (t);
+	if (priority > thread_get_priority())
+	{
+		do_schedule(THREAD_READY);
+	}
+	else thread_unblock (t);
 
 	return tid;
 }
@@ -333,7 +336,7 @@ void thread_sleep(int64_t ticks){
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
 	old_level = intr_disable ();
-
+	
 	// 현재 스레드가 idle_thread가 아닌 스레드라면,
 	if (curr != idle_thread){
 		// 깨야할 시간 설정해주고
