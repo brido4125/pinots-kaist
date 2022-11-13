@@ -133,7 +133,6 @@ thread_init (void) {
 void
 thread_start (void) {
 	/* Create the idle thread. */
-	printf("thread start \n");
 	struct semaphore idle_started;
 	sema_init (&idle_started, 0);
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
@@ -217,7 +216,7 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 
 	/* Add to run queue. */
-	thread_unblock (t);
+	thread_unblock (t); 
 
 	return tid;
 }
@@ -252,7 +251,8 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	// list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, thread_priority_compare, 0);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -308,23 +308,15 @@ thread_exit (void) {
    may be scheduled again immediately at the scheduler's whim. */
 void
 thread_yield (void) {
-	// 현재 스레드의 포인터 가져오기
-	struct thread *curr = thread_current ();
+	struct thread *curr = thread_current (); // 현재 스레드의 포인터 가져오기
 	enum intr_level old_level;
-
-	ASSERT (!intr_context ());
-
-	// 인터럽트를 disable한다.
-	old_level = intr_disable ();
-	// 해당 스레드가 runnig state에 있었다면
-	if (curr != idle_thread)
-		// 여기서 ready list에 새로운 요소가 추가된다.
-		list_push_back (&ready_list, &curr->elem);
-	// 현재 스레드의 상태를 THREAD_READY로 변경하고
-	// context switch를 수행한다.
-	do_schedule (THREAD_READY);
-	// 원래의 상태(인터럽트 상태)로 되돌린다.
-	intr_set_level (old_level);
+	ASSERT (!intr_context ()); // 인터럽트를 disable한다.
+	old_level = intr_disable (); // 해당 스레드가 runnig state에 있었다면
+	if (curr != idle_thread) // 여기서 ready list에 새로운 요소가 추가된다.
+		// list_push_back (&ready_list, &curr->elem); // 현재 스레드의 상태를 THREAD_READY로 변경하고
+		list_insert_ordered(&ready_list, &curr->elem, thread_priority_compare, 0);
+	do_schedule (THREAD_READY); // context switch를 수행한다.
+	intr_set_level (old_level); // 원래의 상태(인터럽트 상태)로 되돌린다.
 }
 
 // ticks = 깨야하는 시간
@@ -333,15 +325,12 @@ void thread_sleep(int64_t ticks){
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
 	old_level = intr_disable ();
+	
 
-	// 현재 스레드가 idle_thread가 아닌 스레드라면,
-	if (curr != idle_thread){
-		// 깨야할 시간 설정해주고
-		curr->wakeup_tick = ticks;
-		// 현재 스레드를 sleep 상태로 만들고 
-		// 스케쥴링(다음에 실행될 스레드를 ready_list에서 구하고 그를 실행) 수행.
-		list_push_back (&sleep_list, &curr->elem);
-		update_next_tick_to_awake(ticks);
+	if (curr != idle_thread){// 현재 스레드가 idle_thread가 아닌 스레드라면,
+		curr->wakeup_tick = ticks; // 깨야할 시간 설정해주고
+		list_push_back (&sleep_list, &curr->elem); // 현재 스레드를 sleep 상태로 만들고 
+		update_next_tick_to_awake(ticks); // 스케쥴링(다음에 실행될 스레드를 ready_list에서 구하고 그를 실행) 수행.
 		do_schedule (THREAD_BLOCKED);
 	}
 	intr_set_level (old_level);
@@ -349,11 +338,11 @@ void thread_sleep(int64_t ticks){
 
 // wakeup_tick값이 global ticks보다 작거나 같은 스레드를 깨운다.
 // 매개변수 ticks = global tick
+// sleep list의 모든 entry를 순회하며
+// global tick이 현재 들어온 tick의 wakeup_tick 보다 크거나 같다면
+// 슬립 큐에서 제거하고 unblock 한다.
+// 작다면 update_next_tick_to_awake() 를 호출한다.}
 void thread_awake(int64_t ticks){
-	// sleep list의 모든 entry를 순회하며
-	// global tick이 현재 들어온 tick의 wakeup_tick 보다 크거나 같다면
-	// 슬립 큐에서 제거하고 unblock 한다.
-	// 작다면 update_next_tick_to_awake() 를 호출한다.
 	next_tick_to_awake = INT64_MAX;
 	struct list_elem *e = list_begin(&sleep_list);
 	while(e != list_tail(&sleep_list)){
@@ -369,17 +358,16 @@ void thread_awake(int64_t ticks){
 	}
 }
 
+// next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다
 void update_next_tick_to_awake(int64_t ticks){
-	// next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다
 	if (next_tick_to_awake > ticks){
 		next_tick_to_awake = ticks;
-		// printf("next_tick_to_awake : %lld \n", next_tick_to_awake);
 	}
 	
 }
 
+// next_tick_to_awake 을 반환한다.
 int64_t get_next_tick_to_awake(void){
-	// next_tick_to_awake 을 반환한다.
 	return next_tick_to_awake;
 }
 
@@ -394,7 +382,11 @@ int
 thread_get_priority (void) {
 	return thread_current ()->priority;
 }
-
+bool thread_priority_compare(struct list_elem *e1,struct list_elem *e2, void *aux UNUSED){
+	struct thread *f1 = list_entry (e1, struct thread, elem);
+	struct thread *f2 = list_entry (e2, struct thread, elem);
+	return f1->priority > f2->priority;
+}
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice UNUSED) {
