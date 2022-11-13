@@ -217,8 +217,7 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
-	if (t->priority > thread_current()->priority)
-		thread_yield();
+	test_max_priority(thread_current()->priority);
 	return tid;
 }
 
@@ -314,8 +313,11 @@ thread_yield (void) {
 	ASSERT (!intr_context ()); // 인터럽트를 disable한다.
 	old_level = intr_disable (); // 해당 스레드가 runnig state에 있었다면
 	if (curr != idle_thread) // 여기서 ready list에 새로운 요소가 추가된다.
-		// list_push_back (&ready_list, &curr->elem); // 현재 스레드의 상태를 THREAD_READY로 변경하고
-		list_insert_ordered(&ready_list, &curr->elem, thread_priority_compare, 0);
+	{
+		if (list_empty(&ready_list))
+			list_push_back (&ready_list, &curr->elem); // 현재 스레드의 상태를 THREAD_READY로 변경하고
+		else list_insert_ordered(&ready_list, &curr->elem, thread_priority_compare, 0);
+	}
 	do_schedule (THREAD_READY); // context switch를 수행한다.
 	intr_set_level (old_level); // 원래의 상태(인터럽트 상태)로 되돌린다.
 }
@@ -381,7 +383,9 @@ thread_set_priority (int new_priority) {
 }
 
 void test_max_priority(int new_priority){
-	if (list_front(&ready_list) < new_priority)
+	if (list_empty(&ready_list))
+		return ; //  좀 더 좋은방법 있으면 알려주셈.
+	if ((list_entry(list_front(&ready_list), struct thread, elem)->priority  < new_priority))
 		return;
 	thread_yield();
 }
