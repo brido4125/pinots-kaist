@@ -342,11 +342,8 @@ void thread_sleep(int64_t ticks){
 		// 스케쥴링(다음에 실행될 스레드를 ready_list에서 구하고 그를 실행) 수행.
 		list_push_back (&sleep_list, &curr->elem);
 		update_next_tick_to_awake(ticks);
-
 		do_schedule (THREAD_BLOCKED);
-		
 	}
-
 	intr_set_level (old_level);
 }
 
@@ -357,10 +354,9 @@ void thread_awake(int64_t ticks){
 	// global tick이 현재 들어온 tick의 wakeup_tick 보다 크거나 같다면
 	// 슬립 큐에서 제거하고 unblock 한다.
 	// 작다면 update_next_tick_to_awake() 를 호출한다.
-
+	next_tick_to_awake = INT64_MAX;
 	struct list_elem *e = list_begin(&sleep_list);
-
-	while(e != list_end(&sleep_list)){
+	while(e != list_tail(&sleep_list)){
 		struct thread *f = list_entry (e, struct thread, elem);
 		
 		if (ticks >= f->wakeup_tick){
@@ -370,7 +366,6 @@ void thread_awake(int64_t ticks){
 			e = list_next(e);
 			update_next_tick_to_awake(f->wakeup_tick);
 		}
-
 	}
 }
 
@@ -378,6 +373,7 @@ void update_next_tick_to_awake(int64_t ticks){
 	// next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다
 	if (next_tick_to_awake > ticks){
 		next_tick_to_awake = ticks;
+		// printf("next_tick_to_awake : %lld \n", next_tick_to_awake);
 	}
 	
 }
