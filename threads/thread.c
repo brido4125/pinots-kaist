@@ -48,7 +48,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 
 
 // 가장 빨리 일어날 스레드의 wakeup_time을 저장.
-static int64_t next_tick_to_awake = 1 << 30;
+static int64_t next_tick_to_awake = INT64_MAX;
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -132,6 +132,7 @@ thread_init (void) {
 void
 thread_start (void) {
 	/* Create the idle thread. */
+	printf("thread start \n");
 	struct semaphore idle_started;
 	sema_init (&idle_started, 0);
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
@@ -329,47 +330,29 @@ thread_yield (void) {
 void thread_sleep(int64_t ticks){
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
-
 	old_level = intr_disable ();
-
 	if (curr != idle_thread){
 		curr->wakeup_tick = ticks;
 		list_push_back (&sleep_list, &curr->elem);
 		update_next_tick_to_awake(ticks);
+		do_schedule (THREAD_BLOCKED);
 	}
-	do_schedule (THREAD_BLOCKED);
 	intr_set_level (old_level);
-
 }
 
 // wakeup_tick값이 global ticks보다 작거나 같은 스레드를 깨운다.
 void thread_awake(int64_t ticks){
-	// int64_t curr_tick = timer_ticks ();
-	// list_elem *e;
-	// sleep list의 모든 entry를 순회하며
-	struct list_elem *end_point = list_end (&sleep_list);
-	struct list_elem *e = list_begin (&sleep_list);
-	struct thread *head_thread = list_entry(e, struct thread, elem);
-	next_tick_to_awake = head_thread->wakeup_tick;
-
-	for (e; e != end_point; e = list_remove (e)) {
+	struct list_elem *e = list_begin(&sleep_list);
+	while (e != list_tail(&sleep_list)){
 		struct thread *f = list_entry (e, struct thread, elem);
-		
-		// global tick이 next_tick_to_awake 보다 크거나 같다면
 		if (ticks >= f->wakeup_tick){
-			// 슬립 큐에서 제거하고 unblock 한다.
-			f->status = THREAD_READY;
-			list_push_back(&ready_list, e);
-
-		}else{
-			list_push_back(&sleep_list, e);
-			// 작다면 update_next_tick_to_awake() 를 호출한다.
+			e = list_remove(e);
+			thread_unblock(f);
+		} else {
+			e = list_next(e);
 			update_next_tick_to_awake(f->wakeup_tick);
 		}
-
-		
 	}
-
 }
 
 void update_next_tick_to_awake(int64_t ticks){
@@ -607,8 +590,7 @@ do_schedule(int status) {
 	ASSERT (intr_get_level () == INTR_OFF);
 	ASSERT (thread_current()->status == THREAD_RUNNING);
 	while (!list_empty (&destruction_req)) {
-		struct thread *victim =
-			list_entry (list_pop_front (&destruction_req), struct thread, elem);
+		struct thread *victim = list_entry (list_pop_front (&destruction_req), struct thread, elem);
 		palloc_free_page(victim);
 	}
 	thread_current ()->status = status;
