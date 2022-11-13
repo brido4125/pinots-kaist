@@ -124,21 +124,15 @@ sema_up (struct semaphore *sema) {
 	intr_set_level (old_level);
 }
 
-bool cmp_sem_priority (const struct list_elem *a, const struct list_elem *b, 
-						void *aux){
-	struct semaphore_elem *sa = list_entry(a, struct semaphore_elem, elem);
-	struct semaphore_elem *sb = list_entry(b, struct semaphore_elem, elem);
+// bool cmp_sem_priority (const struct list_elem *a, const struct list_elem *b, 
+// 						void *aux){
+// 	struct semaphore_elem *sa = list_entry(a, struct semaphore_elem, elem);
+// 	struct semaphore_elem *sb = list_entry(b, struct semaphore_elem, elem);
 
-	// TODO: 해당 condition variable 을 기다리는 세마포어 리스트를
-	// 가장 높은 우선순위를 가지는 스레드의 우선순위 순으로 정렬하도록 구현
+// 	// TODO: 해당 condition variable 을 기다리는 세마포어 리스트를
+// 	// 가장 높은 우선순위를 가지는 스레드의 우선순위 순으로 정렬하도록 구현
 
-}
-
-void cond_wait (struct condition *cond, struct lock *lock){
-	// TODO: condition variable의 waiters list에 우선순위 순서로 삽입되도록 수정
-}
-
-
+// }
 
 static void sema_test_helper (void *sema_);
 
