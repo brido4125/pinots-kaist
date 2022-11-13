@@ -217,7 +217,8 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
-	
+	if (t->priority > thread_current()->priority)
+		thread_yield();
 	return tid;
 }
 
@@ -375,6 +376,14 @@ int64_t get_next_tick_to_awake(void){
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	if(!list_empty(&ready_list))
+		test_max_priority(new_priority);
+}
+
+void test_max_priority(int new_priority){
+	if (list_front(&ready_list) < new_priority)
+		return;
+	thread_yield();
 }
 
 /* Returns the current thread's priority. */
