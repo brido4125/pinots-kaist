@@ -216,8 +216,8 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 
 	/* Add to run queue. */
-	thread_unblock (t); 
-
+	thread_unblock (t);
+	
 	return tid;
 }
 
@@ -325,7 +325,7 @@ void thread_sleep(int64_t ticks){
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
 	old_level = intr_disable ();
-	
+
 
 	if (curr != idle_thread){// 현재 스레드가 idle_thread가 아닌 스레드라면,
 		curr->wakeup_tick = ticks; // 깨야할 시간 설정해주고
@@ -341,7 +341,7 @@ void thread_sleep(int64_t ticks){
 // sleep list의 모든 entry를 순회하며
 // global tick이 현재 들어온 tick의 wakeup_tick 보다 크거나 같다면
 // 슬립 큐에서 제거하고 unblock 한다.
-// 작다면 update_next_tick_to_awake() 를 호출한다.}
+// 작다면 update_next_tick_to_awake() 를 호출한다.
 void thread_awake(int64_t ticks){
 	next_tick_to_awake = INT64_MAX;
 	struct list_elem *e = list_begin(&sleep_list);
@@ -358,7 +358,7 @@ void thread_awake(int64_t ticks){
 	}
 }
 
-// next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다
+	// next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다
 void update_next_tick_to_awake(int64_t ticks){
 	if (next_tick_to_awake > ticks){
 		next_tick_to_awake = ticks;
@@ -382,11 +382,13 @@ int
 thread_get_priority (void) {
 	return thread_current ()->priority;
 }
+
 bool thread_priority_compare(struct list_elem *e1,struct list_elem *e2, void *aux UNUSED){
 	struct thread *f1 = list_entry (e1, struct thread, elem);
 	struct thread *f2 = list_entry (e2, struct thread, elem);
 	return f1->priority > f2->priority;
 }
+
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice UNUSED) {
