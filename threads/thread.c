@@ -622,11 +622,11 @@ do_schedule(int status) {
 // 다음에 실행될 스레드를 ready_list에서 구하고 그를 실행시킨다.
 static void
 schedule (void) {
-	struct thread *curr = running_thread ();
-	struct thread *next = next_thread_to_run ();
+	struct thread *curr = running_thread ();//현재 yield될 쓰레드
+	struct thread *next = next_thread_to_run ();//다음번에 CPU를 점유할 쓰레드
 
 	ASSERT (intr_get_level () == INTR_OFF);
-	ASSERT (curr->status != THREAD_RUNNING);
+	ASSERT (curr->status != THREAD_RUNNING);//do_schedule에서 현재 쓰레드의 상태를 변환시켰기 때문이다.
 	ASSERT (is_thread (next));
 	/* Mark us as running. */
 	next->status = THREAD_RUNNING;
@@ -638,7 +638,7 @@ schedule (void) {
 	/* Activate the new address space. */
 	process_activate (next);
 #endif
-
+    //현재 실행중인 쓰레드가 다음번에 올라와야할 쓰레드와 달라야 하는것은 보장 되어야함
 	if (curr != next) {
 		/* If the thread we switched from is dying, destroy its struct
 		   thread. This must happen late so that thread_exit() doesn't
@@ -647,6 +647,11 @@ schedule (void) {
 		   currently used bye the stack.
 		   The real destruction logic will be called at the beginning of the
 		   schedule(). */
+        /*
+         * 아마도 아래의 if문은 현재 yield될 쓰레드가 작업 종료되어 완전히 삭제 될지
+         * 또는 단순히 점유 시간(time slice)을 전부 사용해서 ready-list로 쫓겨 나가는건지에 대한 분기처리
+         * if문 내의 블럭은 쓰레드가 종료된 경우로, 해당 메모리 페이지를 반환하는 로직을 실행시킨다.
+         * */
 		if (curr && curr->status == THREAD_DYING && curr != initial_thread) {
 			ASSERT (curr != next);
 			list_push_back (&destruction_req, &curr->elem);
