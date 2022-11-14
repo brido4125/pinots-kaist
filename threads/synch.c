@@ -255,7 +255,8 @@ lock_held_by_current_thread (const struct lock *lock) {
 /* One semaphore in a list. */
 struct semaphore_elem {
 	struct list_elem elem;              /* List element. */
-	struct semaphore semaphore;         /* This semaphore. */
+	struct semaphore semaphore;       /* This semaphore. */
+	int priority;
 };
 
 /* Initializes condition variable COND.  A condition variable
@@ -298,14 +299,14 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	sema_init (&waiter.semaphore, 0);
+	waiter.priority = thread_current()->priority;
 	if(list_empty(&cond->waiters))
 		list_push_back (&cond->waiters, &waiter.elem);
-	else list_insert_ordered(&cond->waiters, &waiter.elem, thread_priority_compare, 0);
+	else list_insert_ordered(&cond->waiters, &waiter.elem, cmp_sem_priority, 0);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
 	lock_acquire (lock);
 }
-
 /* If any threads are waiting on COND (protected by LOCK), then
    this function signals one of them to wake up from its wait.
    LOCK must be held before calling this function.
@@ -319,14 +320,13 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (lock_held_by_current_thread (lock));
-
 	if (!list_empty (&cond->waiters)){
 		// TODO: condition variable의 waiters list를 우선순위로 재정렬
-
+		if (list_head(&cond->waiters)->next)
+			list_sort(&cond->waiters, cmp_sem_priority, 0);
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
 	}
-	
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -342,4 +342,9 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
+}
+bool cmp_sem_priority(struct list_elem *e1, struct list_elem *e2){
+	struct semaphore_elem *s1 = list_entry(e1, struct semaphore_elem, elem);
+	struct semaphore_elem *s2 = list_entry(e2, struct semaphore_elem, elem);
+	return s1->priority > s2->priority;
 }
