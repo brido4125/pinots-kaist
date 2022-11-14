@@ -7,7 +7,8 @@
 /* A counting semaphore. */
 struct semaphore {
 	unsigned value;             /* Current value. */
-	struct list waiters;        /* List of waiting threads. */
+	struct list waiters;        /* List of 
+	waiting threads. */
 };
 
 void sema_init (struct semaphore *, unsigned value);
@@ -37,6 +38,7 @@ void cond_init (struct condition *);
 void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
+bool cmp_sem_priority(struct list_elem *e1, struct list_elem *e2);
 
 /* Optimization barrier.
  *
