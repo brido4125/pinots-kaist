@@ -683,7 +683,7 @@ allocate_tid (void) {
 void donate_priority(void){
     /* priority donation을 수행하는 함수를 구현한다.*/
     struct thread *target = thread_current();//현재 스레드는 Lock-Holder에 비해 우선 순위가 높은 스레드
-    int nested_dp = 0
+    int nested_dp = 0;
     while (target->wait_on_lock->holder && nested_dp < MAX_NESTED_DEPTH){
         target = target->wait_on_lock->holder;
         if (target->priority < thread_current()->priority){
@@ -695,10 +695,10 @@ void donate_priority(void){
 
 void remove_with_lock(struct lock *lock){
     struct list donations = thread_current()->donations;
-    struct list_elem *target = list_begin(donations);
+    struct list_elem *target = list_begin(&donations);
     while (target != NULL) {
-        struct lock target_thread = list_entry(target, struct thread, donation_elem);
-        if (target_thread->lock == lock)
+        struct thread* target_thread = list_entry(target, struct thread, donation_elem);
+        if (target_thread->wait_on_lock == lock)
             lise_remove(target_thread->donation_elem);
         target = list_next(target);
     }
