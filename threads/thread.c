@@ -706,7 +706,7 @@ void remove_with_lock(struct lock *lock){
     struct list *donations = &(thread_current()->donations);
 	if (list_empty(donations)) return;
     struct list_elem *target = list_begin(donations);
-    while (target != list_tail(donations)) {
+    while (target != list_end(donations)) {
         struct thread* target_thread = list_entry(target, struct thread, donation_elem);
         if (target_thread->wait_on_lock == lock){
             target = list_remove(&(target_thread->donation_elem));
