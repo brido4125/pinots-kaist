@@ -699,7 +699,7 @@ void remove_with_lock(struct lock *lock){
     while (target != NULL) {
         struct thread* target_thread = list_entry(target, struct thread, donation_elem);
         if (target_thread->wait_on_lock == lock)
-            lise_remove(target_thread->donation_elem);
+            list_remove(&target_thread->donation_elem);
         target = list_next(target);
     }
 }
