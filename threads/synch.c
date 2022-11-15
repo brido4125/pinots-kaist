@@ -204,12 +204,18 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 	struct thread *curr = thread_current();
+    int save_priority;
 	if (lock->holder){
 		curr->wait_on_lock = lock;
-		curr->priority = curr->init_priority;
-		// priority donation.
+//		save_priority = curr->priority;//컨택스트 스위칭이 되기전에 원래의 우선순의 값으로 설정
+        if (list_empty(lock->holder->donation))
+            list_front_push(lock->holder->donation, curr->donation_elem);
+        else
+            list_insert_ordered(&(lock->holder->donation),&(curr->donation_elem),thread_priority_compare, 0);
+        donation_priority();
 	}
 	sema_down (&lock->semaphore);
+    thread_current()->wait_on_lock = NULL;
 	lock->holder = thread_current ();
 }
 
@@ -244,8 +250,8 @@ lock_release (struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	lock->holder = NULL;
-	// remove_with_lock(lock);
-	// refresh_priority();
+	remove_with_lock(lock);
+	refresh_priority();
 	sema_up (&lock->semaphore);
 }
 
@@ -356,15 +362,4 @@ bool cmp_sem_priority(struct list_elem *e1, struct list_elem *e2){
 	return s1->priority > s2->priority;
 }
 
-void donate_priority(void){
-	struct thread *curr = thread_current();
-	while (curr->wait_on_lock->holder){
-		curr = curr->wait_on_lock->holder;
-		curr->priority = thread_current()->priority;
-	}
-}
 
-void remove_with_lock(struct lock *lock){
-	struct list_elem target = lock->holder->elem;
-	
-}
