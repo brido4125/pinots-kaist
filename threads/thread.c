@@ -699,11 +699,17 @@ void remove_with_lock(struct lock *lock){
     while (target != NULL) {
         struct thread* target_thread = list_entry(target, struct thread, donation_elem);
         if (target_thread->wait_on_lock == lock)
-            lise_remove(target_thread->donation_elem);
+            list_remove(&target_thread->donation_elem);
         target = list_next(target);
     }
 }
 
 void refresh_priority(void){
-
+	/* 스레드의 우선순위가 변경되었을때, donation을 고려하여 우선순위를 다시 결정하는 함수 */
+	/* 현재 스레드의 우선순위를 기부 받기 전의 우선순위로 변경 */
+	struct thread* curr = thread_current();
+	curr->priority = curr->init_priority;
+	if (curr->priority < list_front(&curr->donations)){
+		curr->priority = list_entry(list_front(&curr->donations),struct thread, donation_elem)->priority;
+	}
 }

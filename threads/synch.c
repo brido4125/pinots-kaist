@@ -209,10 +209,10 @@ lock_acquire (struct lock *lock) {
 		curr->wait_on_lock = lock;
 //		save_priority = curr->priority;//컨택스트 스위칭이 되기전에 원래의 우선순의 값으로 설정
         if (list_empty(&lock->holder->donations))
-            list_front_push(lock->holder->donations, curr->donation_elem);
+            list_push_front(&lock->holder->donations, &curr->donation_elem);
         else
             list_insert_ordered(&(lock->holder->donations),&(curr->donation_elem),thread_priority_compare, 0);
-        donation_priority();
+        donate_priority();
 	}
 	sema_down (&lock->semaphore);
     thread_current()->wait_on_lock = NULL;
