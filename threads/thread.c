@@ -807,7 +807,7 @@ void mlfqs_increment(void){
 	if(current == idle_thread){
 		return;
 	}
-	current->recent_cpu = current->recent_cpu + 1;
+	current->recent_cpu = add_mixed(current->recent_cpu,1);
 }
 
 void mlfqs_recalc(void){
