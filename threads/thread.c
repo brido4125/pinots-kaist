@@ -796,8 +796,8 @@ void mlfqs_load_avg(void){
 		//현재 CPU에 idle이 실행중
 		ready_queue_size++;
 	}
-	int cpu_coeff = div_mixed(ready_queue_size, 60);
-	load_avg = add_fp(mult_fp(load_avg,div_fp(59, 60)),cpu_coeff);
+	int cpu_coeff = div_mixed(int_to_fp(ready_queue_size), 60);
+	load_avg = add_fp(mult_fp(load_avg,div_mixed(int_to_fp(59), 60)),cpu_coeff);
 	ASSERT(load_avg >= 0);
 }
 
