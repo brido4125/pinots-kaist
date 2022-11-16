@@ -746,9 +746,8 @@ void mlfqs_priority(struct thread *t){
 	if(t == idle_thread){
 		return;
 	}
-	//priority = PRI_MAX – (nice * 2) - (recent_cpu / 4)
-	int chunk = div_mixed(t->recent_cpu,4);
-	t->priority = fp_to_int(mult_mixed() PRI_MAX - (nice * 2)); 
+	//priority = PRI_MAX – (recent_cpu / 4) – (nice * 2)
+	t->priority = fp_to_int(add_mixed(div_mixed(t->recent_cpu,-4),PRI_MAX - t->nice * 2)); 
 }
 
 /* Advanced Schedular */
@@ -757,12 +756,20 @@ void mlfqs_recent_cpu(struct thread *t){
 		return;
 	}
 	int converted_load_avg = mult_mixed(load_avg,2);
-	t->recent_cpu = add_mixed(mult_mixed(converted_load_avg / add_mixed(converted_load_avg,1),t->recent_cpu),t->nice);
+	//recent_cpu = (2 * load_avg) / (2 * load_avg + 1) * recent_cpu + nice
+	t->recent_cpu = add_mixed(mult_fp(converted_load_avg / add_mixed(converted_load_avg,1),t->recent_cpu),t->nice);
 }
 
 void mlfqs_load_avg(void){
+	//load_avg = (59/60) * load_avg + (1/60) * ready_threads
+	struct thread* current = thread_current();
 	size_t ready_queue_size = list_size(&ready_list);
-	load_avg = (59 / 60) * load_avg + (1 / 60) * (ready_queue_size + 1);
+	if (current == idle_thread){
+		//현재 CPU에 idle이 실행중
+		load_avg = (59 / 60) * load_avg + (1 / 60) * (ready_queue_size);
+	}else{
+		load_avg = (59 / 60) * load_avg + (1 / 60) * (ready_queue_size + 1);
+	}
 	ASSERT(load_avg >= 0);
 }
 
