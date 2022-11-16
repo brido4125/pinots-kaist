@@ -664,6 +664,7 @@ do_schedule(int status) {
 	ASSERT (thread_current()->status == THREAD_RUNNING);
 	while (!list_empty (&destruction_req)) {
 		struct thread *victim = list_entry (list_pop_front (&destruction_req), struct thread, elem);
+		list_remove(&victim->all_elem);
 		palloc_free_page(victim);
 	}
 	thread_current ()->status = status;
@@ -791,12 +792,12 @@ void mlfqs_load_avg(void){
 	//load_avg = (59/60) * load_avg + (1/60) * ready_threads
 	struct thread* current = thread_current();
 	size_t ready_queue_size = list_size(&ready_list);
-	if (current == idle_thread){
+	if (current != idle_thread){
 		//현재 CPU에 idle이 실행중
-		load_avg = add_fp(mult_fp(load_avg,div_fp(59, 60)),mult_mixed(div_fp(1, 60),ready_queue_size));
-	}else{
-		load_avg = add_fp(mult_fp(load_avg,div_fp(59, 60)),mult_mixed(div_fp(1, 60),ready_queue_size+1));
+		ready_queue_size++;
 	}
+	int cpu_coeff = div_mixed(ready_queue_size, 60);
+	load_avg = add_fp(mult_fp(load_avg,div_fp(59, 60)),cpu_coeff);
 	ASSERT(load_avg >= 0);
 }
 
