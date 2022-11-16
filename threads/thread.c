@@ -455,7 +455,7 @@ thread_get_load_avg (void) {
 	/* TODO: Your implementation goes here */
 	enum intr_level old_level;
 	old_level = intr_disable();
-	int load_avg_100 = load_avg * 100;
+	int load_avg_100 = fp_to_int(mult_mixed(load_avg,100));
 	intr_set_level(old_level);
 	return load_avg_100;
 }
@@ -794,9 +794,9 @@ void mlfqs_load_avg(void){
 	size_t ready_queue_size = list_size(&ready_list);
 	if (current == idle_thread){
 		//현재 CPU에 idle이 실행중
-		load_avg = (59 / 60) * load_avg + (1 / 60) * (ready_queue_size);
+		load_avg = fp_to_int(add_fp(mult_fp(load_avg,(59 / 60)),mult_mixed((1 / 60),ready_queue_size)));
 	}else{
-		load_avg = (59 / 60) * load_avg + (1 / 60) * (ready_queue_size + 1);
+		load_avg = fp_to_int(add_fp(mult_fp(load_avg,(59 / 60)),mult_mixed((1 / 60),(ready_queue_size+1))));
 	}
 	ASSERT(load_avg >= 0);
 }
