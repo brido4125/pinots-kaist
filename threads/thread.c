@@ -30,6 +30,8 @@
 /* Advanced Scheduler*/
 #define NICE_DEFAULT 0
 #define RECENT_CPU_DEFAULT 0
+#define LOAD_AVG_DEFAULT 0
+int load_avg;
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -143,6 +145,7 @@ thread_start (void) {
 	struct semaphore idle_started;
 	sema_init (&idle_started, 0);
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
+	load_avg = LOAD_AVG_DEFAULT;
 
 	/* Start preemptive thread scheduling. */
 	intr_enable ();
@@ -335,7 +338,6 @@ void thread_sleep(int64_t ticks){
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
 	old_level = intr_disable ();
-
 
 	if (curr != idle_thread){// 현재 스레드가 idle_thread가 아닌 스레드라면,
 		curr->wakeup_tick = ticks; // 깨야할 시간 설정해주고
@@ -737,4 +739,41 @@ void refresh_priority(void){
 	if (curr->priority < donor){
 		curr->priority = donor;
 	}
+}
+
+/* Advanced Schedular */
+void mlfqs_priority(struct thread *t){
+	if(t == idle_thread){
+		return;
+	}
+	//priority = PRI_MAX – (nice * 2) - (recent_cpu / 4)
+	int chunk = div_mixed(t->recent_cpu,4);
+	t->priority = fp_to_int(mult_mixed() PRI_MAX - (nice * 2)); 
+}
+
+/* Advanced Schedular */
+void mlfqs_recent_cpu(struct thread *t){
+	if(t == idle_thread){
+		return;
+	}
+	int converted_load_avg = mult_mixed(load_avg,2);
+	t->recent_cpu = add_mixed(mult_mixed(converted_load_avg / add_mixed(converted_load_avg,1),t->recent_cpu),t->nice);
+}
+
+void mlfqs_load_avg(void){
+	size_t ready_queue_size = list_size(&ready_list);
+	load_avg = (59 / 60) * load_avg + (1 / 60) * (ready_queue_size + 1);
+	ASSERT(load_avg >= 0);
+}
+
+void mlfqs_increment(void){
+	struct thread* current = thread_current();
+	if(current == idle_thread){
+		return;
+	}
+	current->recent_cpu = current->recent_cpu + 1;
+}
+
+void mlfqs_recalc(void){
+	
 }
