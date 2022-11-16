@@ -38,6 +38,9 @@ int load_avg;
 static struct list ready_list;
 static struct list sleep_list;
 
+/* Adnvanced Scheduler */
+static struct list all_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -129,6 +132,7 @@ thread_init (void) {
 	list_init (&ready_list);
 	list_init (&sleep_list);
 	list_init (&destruction_req);
+	list_init (&all_list);
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
@@ -386,6 +390,8 @@ int64_t get_next_tick_to_awake(void){
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
+	if(thread_mlfqs) return;
+
 	thread_current ()->priority = new_priority;
 	thread_current ()->init_priority = new_priority;
 	refresh_priority();
@@ -423,27 +429,47 @@ bool donation_priority_compare(struct list_elem *e1,struct list_elem *e2, void *
 void
 thread_set_nice (int nice UNUSED) {
 	/* TODO: Your implementation goes here */
+	enum intr_level old_level;
+	old_level = intr_disable();
+	struct thread *curr = thread_current();
+	curr->nice = nice;
+	mlfqs_priority(curr);
+	intr_set_level (old_level);
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) {
 	/* TODO: Your implementation goes here */
-	return 0;
+	enum intr_level old_level;
+	old_level = intr_disable();
+	struct thread *curr = thread_current();
+	int nice = curr->nice;
+	intr_set_level(old_level);
+	return nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) {
 	/* TODO: Your implementation goes here */
-	return 0;
+	enum intr_level old_level;
+	old_level = intr_disable();
+	int load_avg_100 = load_avg * 100;
+	intr_set_level(old_level);
+	return load_avg_100;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) {
 	/* TODO: Your implementation goes here */
-	return 0;
+	enum intr_level old_level;
+	old_level = intr_disable();
+	struct thread *curr = thread_current();
+	int recent_cpu = fp_to_int(mult_mixed((curr->recent_cpu),100));
+	intr_set_level(old_level);
+	return recent_cpu;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -515,6 +541,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	/* Advanced Scheduler */
 	t->nice = NICE_DEFAULT;
 	t->recent_cpu = RECENT_CPU_DEFAULT;
+	list_push_front(&all_list,&t->all_elem);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -760,6 +787,7 @@ void mlfqs_recent_cpu(struct thread *t){
 	t->recent_cpu = add_mixed(mult_fp(converted_load_avg / add_mixed(converted_load_avg,1),t->recent_cpu),t->nice);
 }
 
+/* Advanced Schedular */
 void mlfqs_load_avg(void){
 	//load_avg = (59/60) * load_avg + (1/60) * ready_threads
 	struct thread* current = thread_current();
@@ -773,6 +801,7 @@ void mlfqs_load_avg(void){
 	ASSERT(load_avg >= 0);
 }
 
+/* Advanced Schedular */
 void mlfqs_increment(void){
 	struct thread* current = thread_current();
 	if(current == idle_thread){
@@ -782,5 +811,12 @@ void mlfqs_increment(void){
 }
 
 void mlfqs_recalc(void){
-	
+	struct list_elem* elem = list_front(&all_list);
+	while (elem != list_tail(&all_list))
+	{
+		struct thread* target = list_entry(elem,struct thread,all_elem);
+		mlfqs_priority(target);
+		mlfqs_recent_cpu(target);
+		elem = list_next(elem);
+	}
 }

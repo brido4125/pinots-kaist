@@ -104,6 +104,7 @@ struct thread {
 	/* Advanced Scheduler*/
 	int nice;//MAX : 20, MIN : -20 if this value is near to MAX VALUE it means this thread will be going to yield their CPU TIME to other threads.
 	int recent_cpu;//해당 스레드가 최근에 얼마나 많은 CPU Time을 사용했는지 의미 if this value is greater, priority get smaller value.
+	struct list_elem all_elem;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
