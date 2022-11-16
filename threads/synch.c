@@ -266,7 +266,7 @@ lock_held_by_current_thread (const struct lock *lock) {
 struct semaphore_elem {
 	struct list_elem elem;              /* List element. */
 	struct semaphore semaphore;       /* This semaphore. */
-	int priority;
+	// int priority;
 };
 
 /* Initializes condition variable COND.  A condition variable
@@ -309,7 +309,7 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	sema_init (&waiter.semaphore, 0);
-	waiter.priority = thread_current()->priority;
+	// waiter.priority = thread_current()->priority;
 	if(list_empty(&cond->waiters))
 		list_push_back (&cond->waiters, &waiter.elem);
 	else list_insert_ordered(&cond->waiters, &waiter.elem, cmp_sem_priority, 0);
@@ -354,9 +354,11 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 		cond_signal (cond, lock);
 }
 bool cmp_sem_priority(struct list_elem *e1, struct list_elem *e2){
-	struct semaphore_elem *s1 = list_entry(e1, struct semaphore_elem, elem);
-	struct semaphore_elem *s2 = list_entry(e2, struct semaphore_elem, elem);
-	return s1->priority > s2->priority;
+	struct list sema_wait1 = list_entry(e1, struct semaphore_elem, elem)->semaphore.waiters;
+	struct list sema_wait2 = list_entry(e2, struct semaphore_elem, elem)->semaphore.waiters;
+	struct thread *t1 = list_entry(list_front(&sema_wait1), struct thread, elem);
+	struct thread *t2 = list_entry(list_front(&sema_wait2), struct thread, elem);
+	return t1->priority > t2->priority;
 }
 
 }
