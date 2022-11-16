@@ -23,6 +23,7 @@
 /* Random value for basic thread
    Do not modify this value. */
 #define THREAD_BASIC 0xd42df210
+#define  MAX_NESTED_DEPTH 8
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -71,7 +72,7 @@ static tid_t allocate_tid (void);
 void thread_sleep(int64_t ticks);
 void thread_awake(int64_t ticks);
 void update_next_tick_to_awake(int64_t ticks); 
-int64_t get_next_tick_to_awake(void); 
+int64_t get_next_tick_to_awake(void);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -378,6 +379,9 @@ int64_t get_next_tick_to_awake(void){
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	thread_current ()->init_priority = new_priority;
+	refresh_priority();
+	donate_priority();
 	if(!list_empty(&ready_list))
 		test_max_priority(new_priority);
 }
@@ -399,6 +403,11 @@ thread_get_priority (void) {
 bool thread_priority_compare(struct list_elem *e1,struct list_elem *e2, void *aux UNUSED){
 	struct thread *f1 = list_entry (e1, struct thread, elem);
 	struct thread *f2 = list_entry (e2, struct thread, elem);
+	return f1->priority > f2->priority;
+}
+bool donation_priority_compare(struct list_elem *e1,struct list_elem *e2, void *aux UNUSED){
+	struct thread *f1 = list_entry (e1, struct thread, donation_elem);
+	struct thread *f2 = list_entry (e2, struct thread, donation_elem);
 	return f1->priority > f2->priority;
 }
 
@@ -490,6 +499,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
+	t->init_priority = priority;
+	list_init(&(t->donations));
+	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
 }
 
@@ -674,4 +686,45 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+/*Priority Donation*/
+void donate_priority(void){
+    /* priority donation을 수행하는 함수를 구현한다.*/
+    struct thread *target = thread_current();//현재 스레드는 Lock-Holder에 비해 우선 순위가 높은 스레드
+    int nested_dp = 0;
+    while (target->wait_on_lock && nested_dp < MAX_NESTED_DEPTH){
+        target = target->wait_on_lock->holder;
+        if (target->priority < thread_current()->priority){
+            target->priority = thread_current()->priority;//여기가 우선순위 기부
+        }
+        nested_dp++;
+    }
+}
+
+void remove_with_lock(struct lock *lock){
+    struct list *donations = &(thread_current()->donations);
+	if (list_empty(donations)) return;
+    struct list_elem *target = list_begin(donations);
+    while (target != list_end(donations)) {
+        struct thread* target_thread = list_entry(target, struct thread, donation_elem);
+        if (target_thread->wait_on_lock == lock){
+            target = list_remove(&(target_thread->donation_elem));
+		}
+        else{
+			target = list_next(target);
+		}
+    }
+}
+
+void refresh_priority(void){
+	/* 스레드의 우선순위가 변경되었을때, donation을 고려하여 우선순위를 다시 결정하는 함수 */
+	/* 현재 스레드의 우선순위를 기부 받기 전의 우선순위로 변경 */
+	struct thread* curr = thread_current();
+	curr->priority = curr->init_priority;
+	if (list_empty(&curr->donations)) return;
+	int donor = list_entry(list_front(&curr->donations),struct thread, donation_elem)->priority;
+	if (curr->priority < donor){
+		curr->priority = donor;
+	}
 }

@@ -203,8 +203,17 @@ lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
-
+	struct thread *curr = thread_current();
+	if (lock->holder != NULL){
+		curr->wait_on_lock = lock;
+        if (list_empty(&(lock->holder->donations)))
+            list_push_front(&(lock->holder->donations), &(curr->donation_elem));
+        else
+            list_insert_ordered(&(lock->holder->donations), &(curr->donation_elem), donation_priority_compare, 0);
+        donate_priority();
+	}
 	sema_down (&lock->semaphore);
+    thread_current()->wait_on_lock = NULL;
 	lock->holder = thread_current ();
 }
 
@@ -237,8 +246,9 @@ void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
-
 	lock->holder = NULL;
+	remove_with_lock(lock);
+	refresh_priority();
 	sema_up (&lock->semaphore);
 }
 
@@ -347,4 +357,6 @@ bool cmp_sem_priority(struct list_elem *e1, struct list_elem *e2){
 	struct semaphore_elem *s1 = list_entry(e1, struct semaphore_elem, elem);
 	struct semaphore_elem *s2 = list_entry(e2, struct semaphore_elem, elem);
 	return s1->priority > s2->priority;
+}
+
 }

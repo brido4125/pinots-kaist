@@ -156,6 +156,12 @@ void do_iret (struct intr_frame *tf);
 void thread_sleep(int64_t ticks);
 void thread_awake(int64_t ticks);
 void update_next_tick_to_awake(int64_t ticks); 
-int64_t get_next_tick_to_awake(void); 
+int64_t get_next_tick_to_awake(void);
 
+/*Donation*/
+
+void donate_priority(void);
+void remove_with_lock(struct lock* lock);
+void refresh_priority(void);
+bool donation_priority_compare(struct list_elem *e1,struct list_elem *e2, void *aux UNUSED);
 #endif /* threads/thread.h */
