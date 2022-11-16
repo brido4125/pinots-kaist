@@ -92,7 +92,6 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 	int64_t wakeup_tick;
-
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
@@ -102,6 +101,10 @@ struct thread {
     struct list donations;//multiple donationdexed을 고려하기 위해 사용
     struct list_elem donation_elem;//multiple donation을 고려하기 위해 사용
 
+	/* Advanced Scheduler*/
+	int nice;//MAX : 20, MIN : -20 if this value is near to MAX VALUE it means this thread will be going to yield their CPU TIME to other threads.
+	int recent_cpu;//해당 스레드가 최근에 얼마나 많은 CPU Time을 사용했는지 의미 if this value is greater, priority get smaller value.
+	struct list_elem all_elem;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -145,11 +148,6 @@ void thread_set_priority (int);
 bool thread_priority_compare(struct list_elem *e1, struct list_elem *e2, void *aux UNUSED);
 void test_max_priority(int new_priority);
 
-int thread_get_nice (void);
-void thread_set_nice (int);
-int thread_get_recent_cpu (void);
-int thread_get_load_avg (void);
-
 void do_iret (struct intr_frame *tf);
 
 
@@ -159,9 +157,22 @@ void update_next_tick_to_awake(int64_t ticks);
 int64_t get_next_tick_to_awake(void);
 
 /*Donation*/
-
 void donate_priority(void);
 void remove_with_lock(struct lock* lock);
 void refresh_priority(void);
 bool donation_priority_compare(struct list_elem *e1,struct list_elem *e2, void *aux UNUSED);
-#endif /* threads/thread.h */
+
+/* Adavanced Scheduler*/
+int thread_get_nice (void);
+void thread_set_nice (int);
+int thread_get_recent_cpu (void);
+int thread_get_load_avg (void);
+
+void mlfqs_priority(struct thread *t);
+void mlfqs_recent_cpu(struct thread *t);
+void mlfqs_load_avg(void);
+void mlfqs_increment(void);
+void mlfqs_recalc(void);
+
+#endif 
+/* threads/thread.h */
