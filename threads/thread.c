@@ -11,6 +11,8 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "threads/fixed_point.h"
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -24,6 +26,10 @@
    Do not modify this value. */
 #define THREAD_BASIC 0xd42df210
 #define  MAX_NESTED_DEPTH 8
+
+/* Advanced Scheduler*/
+#define NICE_DEFAULT 0
+#define RECENT_CPU_DEFAULT 0
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -503,6 +509,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	list_init(&(t->donations));
 	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
+
+	/* Advanced Scheduler */
+	t->nice = NICE_DEFAULT;
+	t->recent_cpu = RECENT_CPU_DEFAULT;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
