@@ -358,5 +358,3 @@ bool cmp_sem_priority(struct list_elem *e1, struct list_elem *e2){
 	struct semaphore_elem *s2 = list_entry(e2, struct semaphore_elem, elem);
 	return s1->priority > s2->priority;
 }
-
-}
