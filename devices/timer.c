@@ -133,6 +133,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	thread_current()->recent_cpu++;
 	// 깨어날 thread가 있는지 확인하여, 깨우는 함수를 호출.
 	if (thread_mlfqs){
 		if (ticks % 100 == 0) {
