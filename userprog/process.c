@@ -425,18 +425,18 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Arguments Parsing */
 	/* 인자들을 띄어쓰기 기준으로 토크화 및 토큰의 개수 계산 */
 	char *copy[128];
-	strcpy(copy,file_name);
+	strlcpy(copy,file_name,strlen(file_name));
 	char* next_ptr,ret_ptr;
 	char* argument_list[128];
 	int argument_count = 0;
 
-	ret_ptr = __strtok_r(copy," ",&next_ptr);
+	ret_ptr = strtok_r(copy," ",&next_ptr);
 	argument_list[argument_count] = ret_ptr;
 	while (ret_ptr)
 	{
+		ret_ptr = strtok_r(NULL," ",&next_ptr);
 		argument_count++;
 		argument_list[argument_count] = ret_ptr;
-		ret_ptr = __strtok_r(NULL," ",&next_ptr);
 	}
 	argument_stack(argument_list,argument_count,if_->rsp);
 	success = true;
@@ -447,6 +447,33 @@ done:
 	return success;
 }
 
+/* Argument Passing */
+/* Stack의 rsp 포인터가 점점 작아지며 stack에 데이터가 할당 되는것을 구현해야함 */
+void argument_stack(char ** parse, int count, void ** rsp){
+	int data_size = 0;
+	int i,j;
+	/* 문자열 할당 */
+	for(i = count - 1; i > -1 ; i--){
+		data_size += strlen(parse[i]);
+		for(j = strlen(parse[i]) ; j > -1; j--){
+			*rsp = *rsp - 1;
+			**(char**)rsp = parse[i][j];
+		}
+	}
+	/* word-align 할당 */
+	int target = 0;
+	if(data_size % 8 != 0){
+		target = (data_size / 8) + 1;
+		target = (target * 8) - data_size;
+		for(i = target; i > -1; i--){
+			*rsp = *rsp - 1;
+			**(uint8_t**)rsp = 0;
+		}
+	}
+	/* char* 할당 */
+	
+
+}
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */
 static bool
