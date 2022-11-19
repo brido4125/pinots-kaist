@@ -231,7 +231,6 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
-	test_max_priority(thread_current()->priority);
 	return tid;
 }
 
@@ -467,7 +466,7 @@ thread_get_recent_cpu (void) {
 	enum intr_level old_level;
 	old_level = intr_disable();
 	struct thread *curr = thread_current();
-	int recent_cpu = fp_to_int(mult_mixed((curr->recent_cpu),100));
+	int recent_cpu = fp_to_int_round(mult_mixed((curr->recent_cpu),100));
 	intr_set_level(old_level);
 	return recent_cpu;
 }
