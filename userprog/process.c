@@ -26,6 +26,7 @@ static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
+void argument_stack(char ** parse, int count, void ** rsp);
 
 /* General process initializer for initd and other process. */
 static void
@@ -159,10 +160,12 @@ error:
 }
 
 /* Switch the current execution context to the f_name.
- * Returns -1 on fail. */
+ * Returns -1 on fail. 
+ * 이 함수는 입력받은 명령어의 문자열을 인자(f_name)로 받는다. ex) echo "foo" "var"
+ */
 int
 process_exec (void *f_name) {
-	char *file_name = f_name;
+	char *file_name = f_name;//f_name을 char* 형으로 형변환
 	bool success;
 
 	/* We cannot use the intr_frame in the thread structure.
@@ -173,7 +176,10 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
+
 	/* We first kill the current context */
+	/* 새로운 실행 파일을 현재 스레드에 담기 전에 먼저 현재 process에 담긴 context를 지워준다.*/
+	/* 즉,현재 process에 할당된 페이지 directory를 지운다 */
 	process_cleanup ();
 
 	/* And then load the binary */
@@ -416,7 +422,23 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	/* Arguments Parsing */
+	/* 인자들을 띄어쓰기 기준으로 토크화 및 토큰의 개수 계산 */
+	char *copy[128];
+	strcpy(copy,file_name);
+	char* next_ptr,ret_ptr;
+	char* argument_list[128];
+	int argument_count = 0;
 
+	ret_ptr = __strtok_r(copy," ",&next_ptr);
+	argument_list[argument_count] = ret_ptr;
+	while (ret_ptr)
+	{
+		argument_count++;
+		argument_list[argument_count] = ret_ptr;
+		ret_ptr = __strtok_r(NULL," ",&next_ptr);
+	}
+	argument_stack(argument_list,argument_count,if_->rsp);
 	success = true;
 
 done:
@@ -424,7 +446,6 @@ done:
 	file_close (file);
 	return success;
 }
-
 
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */
