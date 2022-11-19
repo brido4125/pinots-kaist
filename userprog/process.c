@@ -438,7 +438,7 @@ load (const char *file_name, struct intr_frame *if_) {
 		argument_count++;
 		argument_list[argument_count] = ret_ptr;
 	}
-	argument_stack(argument_list,argument_count,if_);
+	argument_stack(argument_list, argument_count, if_);
 	success = true;
 
 done:
@@ -450,46 +450,55 @@ done:
 /* Argument Passing */
 /* Stack의 rsp 포인터가 점점 작아지며 stack에 데이터가 할당 되는것을 구현해야함 */
 void argument_stack(char ** parse, int count, struct intr_frame* if_){
+	// 128 너무 클 경우 수정
 	char* pointer_address[128];//아래 for문에서 스택에 담을 각 인자의 주소값을 저장하는 배열
 	int algin_size = 0;
 	int i,j;
+
+	if_->rsp = USER_STACK;
 	/* 문자열 할당 */
 	for(i = count - 1; i > -1 ; i--){
-		algin_size += strlen(parse[i]) + 1;
+		algin_size = strlen(parse[i]) + 1;
 		if_->rsp = if_->rsp - algin_size;
-		memcpy(if_->rsp,parse[i],algin_size);
+		memcpy(if_->rsp, parse[i], algin_size);
 		pointer_address[i] = if_->rsp;
 	}
 	/* word-align 할당 */
 	int target = 0;
-	if(algin_size % 8 != 0){
-		target = (algin_size / 8) + 1;
-		target = (target * 8) - algin_size;
-		for(i = target; i > -1; i--){
-			if_->rsp = if_->rsp - 1;
-			memcpy(if_->rsp,0,target);
-		}
+	// if(algin_size % 8 != 0){
+	// 	target = (algin_size / 8) + 1;
+	// 	target = (target * 8) - algin_size;
+	// 	for(i = target; i > -1; i--){
+	// 		if_->rsp = if_->rsp - 1;
+	// 		memcpy(if_->rsp,0,target);
+	// 	}
+	// }
+	while ((if_->rsp % 8) != 0 ){
+		if_->rsp--;
 	}
 	/* char* argv[4] 할당 */
 	if_->rsp -= 8;
-	memcpy(if_->rsp,0,8);
+	// memcpy(if_->rsp,0,8);
+	ASSERT(if_->rsp % 16 != 0);
+	*(char *)if_->rsp = '\0';
 	/* argv[3] ~ [0] 할당*/
 	char* rsi_address;
 	for (size_t i = count - 1; i > -1; i--)
 	{
 		if_->rsp -= 8;
-		memcpy(if_->rsp,pointer_address[i],8);
-		if (i == 0){
-			rsi_address = if_->rsp;
-		}
+		if_->rsp = pointer_address[i];
+		// memcpy(if_->rsp,pointer_address[i],8);
+		// if (i == 0){
+		// 	rsi_address = if_->rsp;
+		// }
 	}
 	/* 16의 배수를 확인? */
 	/* Fake return Adrress 할당 */
+	if_->R.rdi = count;
+	if_->R.rsi = if_->rsp;
 	if_->rsp -= 8;
 	memcpy(if_->rsp,0,8);
 	/* 제일 마지막 단계로 레지스터 설정 */
-	if_->R.rdi = count;
-	if_->R.rsi = rsi_address;
 
 }
 /* Checks whether PHDR describes a valid, loadable segment in
