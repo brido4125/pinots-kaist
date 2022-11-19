@@ -26,7 +26,7 @@ static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
-void argument_stack(char ** parse, int count, void ** rsp);
+void argument_stack(char ** parse, int count, struct intr_frame* if_);
 
 /* General process initializer for initd and other process. */
 static void
@@ -438,7 +438,7 @@ load (const char *file_name, struct intr_frame *if_) {
 		argument_count++;
 		argument_list[argument_count] = ret_ptr;
 	}
-	argument_stack(argument_list,argument_count,if_->rsp);
+	argument_stack(argument_list,argument_count,if_);
 	success = true;
 
 done:
@@ -449,29 +449,47 @@ done:
 
 /* Argument Passing */
 /* Stack의 rsp 포인터가 점점 작아지며 stack에 데이터가 할당 되는것을 구현해야함 */
-void argument_stack(char ** parse, int count, void ** rsp){
-	int data_size = 0;
+void argument_stack(char ** parse, int count, struct intr_frame* if_){
+	char* pointer_address[128];//아래 for문에서 스택에 담을 각 인자의 주소값을 저장하는 배열
+	int algin_size = 0;
 	int i,j;
 	/* 문자열 할당 */
 	for(i = count - 1; i > -1 ; i--){
-		data_size += strlen(parse[i]);
-		for(j = strlen(parse[i]) ; j > -1; j--){
-			*rsp = *rsp - 1;
-			**(char**)rsp = parse[i][j];
-		}
+		algin_size += strlen(parse[i]) + 1;
+		if_->rsp = if_->rsp - algin_size;
+		memcpy(if_->rsp,parse[i],algin_size);
+		pointer_address[i] = if_->rsp;
 	}
 	/* word-align 할당 */
 	int target = 0;
-	if(data_size % 8 != 0){
-		target = (data_size / 8) + 1;
-		target = (target * 8) - data_size;
+	if(algin_size % 8 != 0){
+		target = (algin_size / 8) + 1;
+		target = (target * 8) - algin_size;
 		for(i = target; i > -1; i--){
-			*rsp = *rsp - 1;
-			**(uint8_t**)rsp = 0;
+			if_->rsp = if_->rsp - 1;
+			memcpy(if_->rsp,0,target);
 		}
 	}
-	/* char* 할당 */
-	
+	/* char* argv[4] 할당 */
+	if_->rsp -= 8;
+	memcpy(if_->rsp,0,8);
+	/* argv[3] ~ [0] 할당*/
+	char* rsi_address;
+	for (size_t i = count - 1; i > -1; i--)
+	{
+		if_->rsp -= 8;
+		memcpy(if_->rsp,pointer_address[i],8);
+		if (i == 0){
+			rsi_address = if_->rsp;
+		}
+	}
+	/* 16의 배수를 확인? */
+	/* Fake return Adrress 할당 */
+	if_->rsp -= 8;
+	memcpy(if_->rsp,0,8);
+	/* 제일 마지막 단계로 레지스터 설정 */
+	if_->R.rdi = count;
+	if_->R.rsi = rsi_address;
 
 }
 /* Checks whether PHDR describes a valid, loadable segment in
