@@ -41,6 +41,7 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
+	
 	printf ("system call!\n");
 	thread_exit ();
 }

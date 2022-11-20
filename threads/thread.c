@@ -231,7 +231,6 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
-	test_max_priority(thread_current()->priority);
 	return tid;
 }
 
@@ -403,10 +402,11 @@ thread_set_priority (int new_priority) {
 void test_max_priority(int new_priority){
 	if (list_empty(&ready_list))
 		return ; //  좀 더 좋은방법 있으면 알려주셈.
-	if ((list_entry(list_front(&ready_list), struct thread, elem)->priority  < new_priority))
+	if ((list_entry(list_front(&ready_list), struct thread, elem)->priority < new_priority))
 		return;
 	thread_yield();
 }
+
 
 /* Returns the current thread's priority. */
 int
@@ -467,7 +467,7 @@ thread_get_recent_cpu (void) {
 	enum intr_level old_level;
 	old_level = intr_disable();
 	struct thread *curr = thread_current();
-	int recent_cpu = fp_to_int(mult_mixed((curr->recent_cpu),100));
+	int recent_cpu = fp_to_int_round(mult_mixed((curr->recent_cpu),100));
 	intr_set_level(old_level);
 	return recent_cpu;
 }
