@@ -402,10 +402,11 @@ thread_set_priority (int new_priority) {
 void test_max_priority(int new_priority){
 	if (list_empty(&ready_list))
 		return ; //  좀 더 좋은방법 있으면 알려주셈.
-	if ((list_entry(list_front(&ready_list), struct thread, elem)->priority  < new_priority))
+	if ((list_entry(list_front(&ready_list), struct thread, elem)->priority < new_priority))
 		return;
 	thread_yield();
 }
+
 
 /* Returns the current thread's priority. */
 int
