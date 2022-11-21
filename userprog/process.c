@@ -172,6 +172,8 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;//f_name을 char* 형으로 형변환
 	bool success;
+	char copy[128];
+	memcpy(copy,file_name,strlen(file_name) + 1);
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -188,13 +190,13 @@ process_exec (void *f_name) {
 	process_cleanup ();
 
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (copy, &_if);
 	/* If load failed, quit. */
-	palloc_free_page (file_name);
 	if (!success)
 		return -1;
 
-	hex_dump(_if.rsp,_if.rsp,KERN_BASE - _if.rsp,true);
+	palloc_free_page (file_name);
+	hex_dump(_if.rsp,_if.rsp, USER_STACK - _if.rsp,true);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -216,7 +218,8 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while (1){}
+	//while (1){}
+	thread_set_priority(thread_get_priority() - 1);
 	return -1;
 }
 
@@ -349,17 +352,24 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 	process_activate (thread_current ());
 
-	/* Open executable file. */
-	printf("file_name in load %s\n", file_name);
-	char tmp[128];
-	char *next_ptr2[64];
-	// printf("check strlcpy\n");
-	strlcpy(tmp, file_name, strlen(file_name)+1);
-	// printf("check strtok tmp %s\n", tmp);
-	strtok_r(tmp, " ", next_ptr2);
-	// printf("temp %s\n", tmp);
-	file = filesys_open (tmp);
+	/* Arguments Parsing */
+	/* 인자들을 띄어쓰기 기준으로 토크화 및 토큰의 개수 계산 */
+	char* next_ptr, *ret_ptr;
+	char* argument_list[128];
+	int argument_count = 0;
+	ret_ptr = strtok_r(file_name," ",&next_ptr);
+	argument_list[argument_count] = ret_ptr;
+	while (ret_ptr != NULL)
+	{
+		ret_ptr = strtok_r(NULL," ",&next_ptr);
+		argument_count++;
+		argument_list[argument_count] = ret_ptr;
+	}
 
+
+	/* Open executable file. */
+	file = filesys_open (file_name);
+	printf ("load: %s: open success\n", file_name);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
@@ -437,25 +447,8 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
-	printf("here in load rip %p rsp %p\n", if_->rip, if_->rsp);
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-	/* Arguments Parsing */
-	/* 인자들을 띄어쓰기 기준으로 토크화 및 토큰의 개수 계산 */
-	char copy[128];
-	strlcpy(copy,file_name,strlen(file_name)+1);
-	printf("filename %s\n",copy);
-	char* next_ptr, *ret_ptr;
-	char* argument_list[128];
-	int argument_count = 0;
-	ret_ptr = strtok_r(copy," ",&next_ptr);
-	argument_list[argument_count] = ret_ptr;
-	while (ret_ptr)
-	{
-		ret_ptr = strtok_r(NULL," ",&next_ptr);
-		argument_count++;
-		argument_list[argument_count] = ret_ptr;
-	}
 	argument_stack(argument_list, argument_count, if_);
 	success = true;
 
@@ -495,7 +488,7 @@ void argument_stack(char ** parse, int count, struct intr_frame* if_){
 	for (size_t i = count - 1; i > -1; i--)
 	{
 		if_->rsp -= 8;
-		memcpy(if_->rsp, &pointer_address[i], sizeof(char*));
+		memcpy(if_->rsp, pointer_address[i], sizeof(char*));
 	}
 
 	/* Fake return Adrress 할당 */
