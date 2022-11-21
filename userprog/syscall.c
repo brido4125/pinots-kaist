@@ -10,6 +10,7 @@
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
+void check_address(void* addr);
 
 /* System call.
  *
@@ -41,7 +42,13 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-	
 	printf ("system call!\n");
 	thread_exit ();
+}
+
+/* Project2-2 User Memory Access*/
+void check_address(void* addr){
+	if(!is_user_vaddr(addr)){
+		exit(-1);
+	}
 }
