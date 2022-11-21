@@ -194,6 +194,7 @@ process_exec (void *f_name) {
 	if (!success)
 		return -1;
 
+	hex_dump(_if.rsp,_if.rsp,KERN_BASE - _if.rsp,true);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -215,16 +216,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	// enum intr_level old_level;
-	// old_level = intr_disable ();
-	// lock_init(&locks);
-	printf("before lock %d\n", thread_tid());
-	// printf("(args) begin\n(args) argc = 1\n(args) argv[0] = 'args-none'\n(args) argv[1] = null\n(args) end\nargs-none: exit(0)\n");
-	//child_tid -> 살아있는 동안 와일문.;
-	thread_set_priority(thread_get_priority()-1);
-	// lock_acquire(&locks);
-	printf("after lock %d\n", thread_tid());
-	// intr_set_level (old_level);
+	while (1){}
 	return -1;
 }
 
@@ -454,7 +446,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	strlcpy(copy,file_name,strlen(file_name)+1);
 	printf("filename %s\n",copy);
 	char* next_ptr, *ret_ptr;
-	char* argument_list[10];
+	char* argument_list[128];
 	int argument_count = 0;
 	ret_ptr = strtok_r(copy," ",&next_ptr);
 	argument_list[argument_count] = ret_ptr;
@@ -464,12 +456,6 @@ load (const char *file_name, struct intr_frame *if_) {
 		argument_count++;
 		argument_list[argument_count] = ret_ptr;
 	}
-	printf("argument_list %p, argument_count %d \n", argument_list, argument_count);
-	char buf[300];
-	printf("================pc=============\n");
-	hex_dump(if_->rip-64, buf, 300, true);
-	printf("================stackptr=============\n");
-	hex_dump(if_->rip-64, buf, 300, true);
 	argument_stack(argument_list, argument_count, if_);
 	success = true;
 
@@ -487,58 +473,38 @@ void argument_stack(char ** parse, int count, struct intr_frame* if_){
 	int algin_size = 0;
 	int i,j;
 
-	printf("==================here args stack======================\n");
 	/* 문자열 할당 */
-	printf("parse : %s, count : %d\n", parse[0], count);
-	printf("if_rsp %p\n",if_->rsp);
 	for(i = count - 1; i > -1 ; i--){
-		printf("parse[%d] : %s\n", i, parse[i]);
 		algin_size = strlen(parse[i]) + 1;
-		// printf("algin_size %d\n", algin_size);
 		if_->rsp = if_->rsp - algin_size; 
-		// memcpy(&if_->rsp, parse[i], algin_size);
+		memcpy(if_->rsp, parse[i], algin_size);
 		pointer_address[i] = if_->rsp;
 	}
+
 	/* word-align 할당 */
-	int target = 0;
-	// if(algin_size % 8 != 0){
-	// 	target = (algin_size / 8) + 1;
-	// 	target = (target * 8) - algin_size;
-	// 	for(i = target; i > -1; i--){
-	// 		if_->rsp = if_->rsp - 1;
-	// 		memcpy(if_->rsp,0,target);
-	// 	}
-	// }
-	printf("before align rsp : %p\n", if_->rsp);
 	while ((if_->rsp % 8) != 0 ){
 		if_->rsp--;
+		*(uint8_t *)if_->rsp = 0;
 	}
-	printf("after align rsp : %p\n", if_->rsp);
+
 	/* char* argv[4] 할당 */
 	if_->rsp -= 8;
-	// memcpy(if_->rsp,0,8);
-	ASSERT(if_->rsp % 16 != 0);
-	*(char *)if_->rsp = '\0';
+	memset(if_->rsp,0,sizeof(char*));
+
 	/* argv[3] ~ [0] 할당*/
-	char* rsi_address;
 	for (size_t i = count - 1; i > -1; i--)
 	{
 		if_->rsp -= 8;
-		if_->rsp = pointer_address[i];
-		// memcpy(if_->rsp,pointer_address[i],8);
-		// if (i == 0){
-		// 	rsi_address = if_->rsp;
-		// }
+		memcpy(if_->rsp, &pointer_address[i], sizeof(char*));
 	}
-	/* 16의 배수를 확인? */
-	/* Fake return Adrress 할당 */
-	if_->R.rdi = count;
-	if_->R.rsi = if_->rsp;
-	if_->rsp -= 8;
-	// memcpy(if_->rsp,0,8);
-	/* 제일 마지막 단계로 레지스터 설정 */
-	return if_->rsp;
 
+	/* Fake return Adrress 할당 */
+	if_->rsp -= 8;
+	memset(if_->rsp,0,sizeof(void*));
+
+	/* Register 설정 */
+	if_->R.rdi = count;
+	if_->R.rsi = if_->rsp + 8;	
 }
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */
