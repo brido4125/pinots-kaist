@@ -17,6 +17,7 @@
 #include "threads/thread.h"
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "intrinsic.h"
 #ifdef VM
 #include "vm/vm.h"
@@ -26,11 +27,14 @@ static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
+void argument_stack(char ** parse, int count, struct intr_frame* if_);
 
 /* General process initializer for initd and other process. */
+static struct lock locks;
 static void
 process_init (void) {
 	struct thread *current = thread_current ();
+	// struct thread *current = next_thread_to_run();
 }
 
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
@@ -41,6 +45,7 @@ process_init (void) {
 tid_t
 process_create_initd (const char *file_name) {
 	char *fn_copy;
+	char **next_ptr;
 	tid_t tid;
 
 	/* Make a copy of FILE_NAME.
@@ -49,7 +54,7 @@ process_create_initd (const char *file_name) {
 	if (fn_copy == NULL)
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
-
+	// strtok_r(fn_copy, " ", next_ptr);
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
@@ -65,7 +70,6 @@ initd (void *f_name) {
 #endif
 
 	process_init ();
-
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
 	NOT_REACHED ();
@@ -159,11 +163,15 @@ error:
 }
 
 /* Switch the current execution context to the f_name.
- * Returns -1 on fail. */
+ * Returns -1 on fail. 
+ * 이 함수는 입력받은 명령어의 문자열을 인자(f_name)로 받는다. ex) echo "foo" "var"
+ */
 int
 process_exec (void *f_name) {
-	char *file_name = f_name;
+	char *file_name = f_name;//f_name을 char* 형으로 형변환
 	bool success;
+	char copy[128];
+	memcpy(copy,file_name,strlen(file_name) + 1);
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -173,17 +181,20 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
+
 	/* We first kill the current context */
+	/* 새로운 실행 파일을 현재 스레드에 담기 전에 먼저 현재 process에 담긴 context를 지워준다.*/
+	/* 즉,현재 process에 할당된 페이지 directory를 지운다 */
 	process_cleanup ();
 
 	/* And then load the binary */
-	success = load (file_name, &_if);
-
+	success = load (copy, &_if);
 	/* If load failed, quit. */
-	palloc_free_page (file_name);
-	if (!success)
+	if (!success){
 		return -1;
-
+	}
+	hex_dump(_if.rsp,_if.rsp, USER_STACK - _if.rsp,true);
+	palloc_free_page (file_name);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -199,11 +210,14 @@ process_exec (void *f_name) {
  *
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
-int
+
+
 process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	//while (1){}
+	thread_set_priority(thread_get_priority() - 1);
 	return -1;
 }
 
@@ -215,7 +229,8 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	// lock_release(&locks);
+	printf("%s: exit(%d)\n", curr->name, curr->tid);
 	process_cleanup ();
 }
 
@@ -335,6 +350,21 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 	process_activate (thread_current ());
 
+	/* Arguments Parsing */
+	/* 인자들을 띄어쓰기 기준으로 토크화 및 토큰의 개수 계산 */
+	char* next_ptr, *ret_ptr;
+	char* argument_list[128];
+	int argument_count = 0;
+	ret_ptr = strtok_r(file_name," ",&next_ptr);
+	argument_list[argument_count] = ret_ptr;
+	while (ret_ptr != NULL)
+	{
+		ret_ptr = strtok_r(NULL," ",&next_ptr);
+		argument_count++;
+		argument_list[argument_count] = ret_ptr;
+	}
+
+
 	/* Open executable file. */
 	file = filesys_open (file_name);
 	if (file == NULL) {
@@ -356,6 +386,8 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* Read program headers. */
 	file_ofs = ehdr.e_phoff;
+	// void hex_dump (uintptr_t ofs, const void *, size_t size, bool ascii);
+	
 	for (i = 0; i < ehdr.e_phnum; i++) {
 		struct Phdr phdr;
 
@@ -410,13 +442,11 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Set up stack. */
 	if (!setup_stack (if_))
 		goto done;
-
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
-
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-
+	argument_stack(argument_list, argument_count, if_);
 	success = true;
 
 done:
@@ -425,7 +455,47 @@ done:
 	return success;
 }
 
+/* Argument Passing */
+/* Stack의 rsp 포인터가 점점 작아지며 stack에 데이터가 할당 되는것을 구현해야함 */
+void argument_stack(char ** parse, int count, struct intr_frame* if_){
+	// 128 너무 클 경우 수정
+	char* pointer_address[128];//아래 for문에서 스택에 담을 각 인자의 주소값을 저장하는 배열
+	int algin_size = 0;
+	int i,j;
 
+	/* 문자열 할당 */
+	for(i = count - 1; i > -1 ; i--){
+		algin_size = strlen(parse[i]) + 1;
+		if_->rsp = if_->rsp - algin_size;
+		memcpy(if_->rsp, parse[i], algin_size);
+		pointer_address[i] = if_->rsp;
+	}
+
+	/* word-align 할당 */
+	while ((if_->rsp % 8) != 0 ){
+		if_->rsp--;
+		*(uint8_t *)if_->rsp = 0;
+	}
+
+	/* char* argv[4] 할당 */
+	if_->rsp -= 8;
+	memset(if_->rsp,0,sizeof(char*));
+
+	/* argv[3] ~ [0] 할당*/
+	for (j = count - 1; j > -1; j--)
+	{
+		if_->rsp -= 8;
+		*(uint64_t*)if_->rsp = pointer_address[j];
+	}
+
+	/* Fake return Adrress 할당 */
+	if_->rsp -= 8;
+	memset(if_->rsp,0,sizeof(void*));
+
+	/* Register 설정 */
+	if_->R.rdi = count;
+	if_->R.rsi = if_->rsp + 8;	
+}
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */
 static bool
