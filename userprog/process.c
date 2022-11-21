@@ -57,7 +57,6 @@ process_create_initd (const char *file_name) {
 	// strtok_r(fn_copy, " ", next_ptr);
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
-	printf("in process create initd tid %d, current tid %d\n", tid, thread_tid());
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -71,7 +70,6 @@ initd (void *f_name) {
 #endif
 
 	process_init ();
-	printf("f_name %s\n", f_name);
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
 	NOT_REACHED ();
@@ -192,11 +190,11 @@ process_exec (void *f_name) {
 	/* And then load the binary */
 	success = load (copy, &_if);
 	/* If load failed, quit. */
-	if (!success)
+	if (!success){
 		return -1;
-
-	palloc_free_page (file_name);
+	}
 	hex_dump(_if.rsp,_if.rsp, USER_STACK - _if.rsp,true);
+	palloc_free_page (file_name);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -369,7 +367,6 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* Open executable file. */
 	file = filesys_open (file_name);
-	printf ("load: %s: open success\n", file_name);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
@@ -469,7 +466,7 @@ void argument_stack(char ** parse, int count, struct intr_frame* if_){
 	/* 문자열 할당 */
 	for(i = count - 1; i > -1 ; i--){
 		algin_size = strlen(parse[i]) + 1;
-		if_->rsp = if_->rsp - algin_size; 
+		if_->rsp = if_->rsp - algin_size;
 		memcpy(if_->rsp, parse[i], algin_size);
 		pointer_address[i] = if_->rsp;
 	}
@@ -485,10 +482,10 @@ void argument_stack(char ** parse, int count, struct intr_frame* if_){
 	memset(if_->rsp,0,sizeof(char*));
 
 	/* argv[3] ~ [0] 할당*/
-	for (size_t i = count - 1; i > -1; i--)
+	for (j = count - 1; j > -1; j--)
 	{
 		if_->rsp -= 8;
-		memcpy(if_->rsp, pointer_address[i], sizeof(char*));
+		*(uint64_t*)if_->rsp = pointer_address[j];
 	}
 
 	/* Fake return Adrress 할당 */
