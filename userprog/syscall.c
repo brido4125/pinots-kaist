@@ -209,10 +209,21 @@ int read (int fd, void *buffer, unsigned size){
 
 /* Project2-3 System Call */
 int write (int fd, const void *buffer, unsigned size) {
+	check_address(buffer);
+	off_t write_size = 0;
     if (fd == 1) {
         putbuf(buffer, size);
         return size;
-    }
+    }else{
+		struct file* ret_file = find_file(fd);
+		if (ret_file == NULL){
+			return -1;
+		}
+		lock_acquire(&lock);
+		write_size = file_write(ret_file,buffer,size);
+		lock_release(&lock);
+	} 
+	return write_size;
 }
 
 struct file* find_file(int fd){
