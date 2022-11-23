@@ -25,6 +25,7 @@ int open (const char *file);
 int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
+struct file* find_file(int fd);
 
 /* System call.
  *
@@ -85,6 +86,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	case SYS_READ:
 		f->R.rax = read(f->R.rdi,f->R.rsi,f->R.rdx);
+		break;
 	case SYS_WRITE:
 		f->R.rax = write(f->R.rdi,f->R.rsi,f->R.rdx);
 		break;
@@ -176,11 +178,7 @@ int filesize (int fd){
 /* Project2-3 System Call */
 int read (int fd, void *buffer, unsigned size){
 	check_address(buffer);
-	if(fd < 0 || fd >= FDT_COUNT_LIMIT){
-		return -1;
-	}
-	int char_count = 0;
-	lock_acquire(&lock);
+	off_t char_count;
 	/* Keyboard 입력 처리 */
 	if(fd == 0){
 		while (char_count < size)
@@ -198,12 +196,15 @@ int read (int fd, void *buffer, unsigned size){
 		return -1;
 	}
 	else{
-		struct thread* curr = thread_current();
-		struct file** fdt = curr->fd_table;
-		struct file* ret_file = fdt[fd];
-		file_read(ret_file,buffer,size);
+		struct file* ret_file = find_file(fd);
+		if (ret_file == NULL){
+			return -1;
+		}
+		lock_acquire(&lock);
+		char_count = file_read(ret_file,buffer,size);
+		lock_release(&lock);
 	}
-	lock_release(&lock);
+	return char_count;
 }
 
 /* Project2-3 System Call */
@@ -212,4 +213,12 @@ int write (int fd, const void *buffer, unsigned size) {
         putbuf(buffer, size);
         return size;
     }
+}
+
+struct file* find_file(int fd){
+	struct thread* curr = thread_current();
+	if(fd < 0 || fd >= FDT_COUNT_LIMIT){
+		return NULL;
+	}
+	return curr->fd_table[fd];
 }
