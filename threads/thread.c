@@ -229,6 +229,16 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	/* System Call */
+	t->exit_status = 0;
+	t->fd_table = palloc_get_multiple(PAL_ZERO,FDT_PAGES);
+	if(t->fd_table == NULL){
+		return TID_ERROR;
+	}
+	t->fd_idx = 2;
+	t->fd_table[0] = STDIN_FILENO;
+	t->fd_table[1] = STDOUT_FILENO;
+
 	/* Add to run queue. */
 	thread_unblock (t);
 	test_max_priority(thread_current()->priority);
