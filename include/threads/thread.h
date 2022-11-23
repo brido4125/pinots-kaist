@@ -189,6 +189,6 @@ void mlfqs_increment(void);
 void mlfqs_recalc(void);
 
 /* Project2-3 System Call */
-struct thread* get_child(tid_t pid)
+struct thread* get_child(tid_t pid);
 #endif 
 /* threads/thread.h */
