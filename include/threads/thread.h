@@ -28,6 +28,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* System Call */
+#define FDT_PAGES 3 //To Do : 추후 수정 시도
+#define FDT_COUNT_LIMIT FDT_PAGES *(1<<9) // limit fdidx
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -105,6 +109,12 @@ struct thread {
 	int nice;//MAX : 20, MIN : -20 if this value is near to MAX VALUE it means this thread will be going to yield their CPU TIME to other threads.
 	int recent_cpu;//해당 스레드가 최근에 얼마나 많은 CPU Time을 사용했는지 의미 if this value is greater, priority get smaller value.
 	struct list_elem all_elem;
+
+	/* System Call */
+	int exit_status;
+	struct file** fd_table;
+	int fd_idx;//2로 FD 값 시작
+	
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
