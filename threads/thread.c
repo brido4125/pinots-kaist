@@ -238,6 +238,7 @@ thread_create (const char *name, int priority,
 	t->fd_idx = 2;
 	t->fd_table[0] = STDIN_FILENO;
 	t->fd_table[1] = STDOUT_FILENO;
+	list_init(&t->child_list);
 
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -834,4 +835,18 @@ void mlfqs_recalc(void){
 		mlfqs_recent_cpu(target);
 		elem = list_next(elem);
 	}
+}
+
+/* Project2-3 System Call */
+struct thread* get_child(tid_t pid){
+	struct thread* curr = thread_current();
+	struct list* childs = &curr->child_list;
+	struct list_elem* elem = list_begin(&childs);
+	while(elem != list_end(&childs)){
+		struct thread* target = list_entry(elem,struct thread,child_elem);
+		if(target->tid == pid){
+			return target;
+		}
+	}
+	return NULL;
 }

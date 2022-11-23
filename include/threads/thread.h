@@ -114,7 +114,11 @@ struct thread {
 	int exit_status;
 	struct file** fd_table;
 	int fd_idx;//2로 FD 값 시작
-	
+
+	/* System Call */
+	struct list child_list;
+	struct list_elem child_elem;
+	struct intr_frame pf;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -184,5 +188,7 @@ void mlfqs_load_avg(void);
 void mlfqs_increment(void);
 void mlfqs_recalc(void);
 
+/* Project2-3 System Call */
+struct thread* get_child(tid_t pid)
 #endif 
 /* threads/thread.h */
