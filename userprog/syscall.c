@@ -11,6 +11,8 @@
 #include "userprog/process.h"
 #include "filesys/file.h"
 #include "threads/synch.h"
+#include "lib/string.h"
+#include "threads/palloc.h"
 
 
 void syscall_entry (void);
@@ -26,6 +28,8 @@ int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
 struct file* find_file(int fd);
+int fork (const char *thread_name,struct intr_frame* if_);
+int wait (int pid);
 
 /* System call.
  *
@@ -90,6 +94,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_WRITE:
 		f->R.rax = write(f->R.rdi,f->R.rsi,f->R.rdx);
 		break;
+	case SYS_FORK:
+		f->R.rax = fork(f->R.rdi,f);
+		break;
+	case SYS_WAIT:
+		f->R.rax = wait(f->R.rdi);
+		break;
 	default:
 		break;
 	}
@@ -137,10 +147,17 @@ bool remove(const char *file){
 /* Project2-3 System Call */
 int exec (const char *cmd_line){
 	check_address(cmd_line);
+	char* copy = palloc_get_page(PAL_ZERO);
+	if(copy == NULL){
+		exit(-1);
+	}
+	strlcpy(copy,cmd_line,strlen(cmd_line) + 1);
 	struct thread* curr = thread_current();
-	if (process_exec(cmd_line) == -1){
+	if (process_exec(copy) == -1){
 		return -1;
 	}
+	NOT_REACHED();
+	return 0;
 }
 
 /* Project2-3 System Call */
@@ -153,11 +170,12 @@ int open (const char *file){
 		return -1;
 	}
 	/* Validation 완료 후, FD Table을 순회해서 체크 */
-	int i = curr->fd_idx;
+	int i = 2;
 	while(fdt[i] != 0){
 		i++;
 	}
 	fdt[i] = ret_file;
+	curr->fd_idx = i;
 	return i;
 }
 
@@ -226,10 +244,22 @@ int write (int fd, const void *buffer, unsigned size) {
 	return write_size;
 }
 
+/* Project2-3 System Call */
 struct file* find_file(int fd){
 	struct thread* curr = thread_current();
 	if(fd < 0 || fd >= FDT_COUNT_LIMIT){
 		return NULL;
 	}
 	return curr->fd_table[fd];
+}
+
+/* Project2-3 System Call */
+int fork (const char *thread_name,struct intr_frame* if_){
+	check_address(thread_name);
+	process_fork(thread_name,if_);
+}
+
+/* Project2-3 System Call */
+int wait (int pid){
+	return process_wait(pid);
 }

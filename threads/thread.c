@@ -231,14 +231,16 @@ thread_create (const char *name, int priority,
 
 	/* System Call */
 	t->exit_status = 0;
+
+	list_push_back(&thread_current()->child_list, &t->child_elem);
+
 	t->fd_table = palloc_get_multiple(PAL_ZERO,FDT_PAGES);
 	if(t->fd_table == NULL){
 		return TID_ERROR;
 	}
-	t->fd_idx = 2;
+	t->fd_idx = -1;
 	t->fd_table[0] = STDIN_FILENO;
 	t->fd_table[1] = STDOUT_FILENO;
-	list_init(&t->child_list);
 
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -554,6 +556,11 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
 
+	list_init(&t->child_list);
+	sema_init(&t->fork_sema,0);
+	sema_init(&t->wait_sema,0);
+	sema_init(&t->free_sema,0);
+
 	/* Advanced Scheduler */
 	t->nice = NICE_DEFAULT;
 	t->recent_cpu = RECENT_CPU_DEFAULT;
@@ -841,12 +848,13 @@ void mlfqs_recalc(void){
 struct thread* get_child(tid_t pid){
 	struct thread* curr = thread_current();
 	struct list* childs = &curr->child_list;
-	struct list_elem* elem = list_begin(&childs);
-	while(elem != list_end(&childs)){
+	struct list_elem* elem = list_begin(childs);
+	while(elem != list_end(childs)){
 		struct thread* target = list_entry(elem,struct thread,child_elem);
 		if(target->tid == pid){
 			return target;
 		}
+		elem = list_next(elem);
 	}
 	return NULL;
 }
