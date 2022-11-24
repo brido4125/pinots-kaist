@@ -194,7 +194,7 @@ __do_fork (void *aux) {
 	}
 
 	sema_up(&current->fork_sema);
-	process_init ();
+	//process_init ();
 
 	/* Finally, switch to the newly created process. */
 	if (succ){
@@ -202,7 +202,6 @@ __do_fork (void *aux) {
 	}
 		
 error:
-	printf("ERROR!!!\n");
 	current->exit_status = TID_ERROR;
 	sema_up(&current->fork_sema);
 	exit(TID_ERROR);

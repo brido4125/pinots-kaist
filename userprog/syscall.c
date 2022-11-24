@@ -30,6 +30,7 @@ int write (int fd, const void *buffer, unsigned size);
 struct file* find_file(int fd);
 int fork (const char *thread_name,struct intr_frame* if_);
 int wait (int pid);
+void close (int fd);
 
 /* System call.
  *
@@ -99,6 +100,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	case SYS_WAIT:
 		f->R.rax = wait(f->R.rdi);
+		break;
+	case SYS_CLOSE:
+		close(f->R.rdi);
 		break;
 	default:
 		break;
@@ -256,10 +260,19 @@ struct file* find_file(int fd){
 /* Project2-3 System Call */
 int fork (const char *thread_name,struct intr_frame* if_){
 	check_address(thread_name);
-	process_fork(thread_name,if_);
+	return process_fork(thread_name,if_);
 }
 
 /* Project2-3 System Call */
 int wait (int pid){
 	return process_wait(pid);
+}
+
+void close (int fd){
+	struct file* target = find_file(fd);
+	if (target == NULL){
+		return;
+	}
+	struct thread* curr = thread_current();
+	curr->fd_table[fd] = NULL;
 }
