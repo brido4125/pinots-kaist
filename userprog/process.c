@@ -124,7 +124,7 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
 
-	memcpy(newpage,parent_page,sizeof(PGSIZE));
+	memcpy(newpage,parent_page,PGSIZE);
 	writable = is_writable(pte);
 
 	/* 5. Add new page to child's page table at address VA with WRITABLE
@@ -416,7 +416,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	file = filesys_open (file_name);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
-		goto done;
+		exit(-1);
+		//goto done;
 	}
 
 	/* Read and verify executable header. */
