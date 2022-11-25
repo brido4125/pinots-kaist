@@ -31,6 +31,9 @@ struct file* find_file(int fd);
 int fork (const char *thread_name,struct intr_frame* if_);
 int wait (int pid);
 void close (int fd);
+void seek (int fd, unsigned position);
+unsigned tell (int fd);
+
 
 /* System call.
  *
@@ -103,6 +106,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	case SYS_CLOSE:
 		close(f->R.rdi);
+		break;
+	case SYS_SEEK:
+		seek(f->R.rdi,f->R.rsi);
+		break;
+	case SYS_TELL:
+		f->R.rax = tell(f->R.rdi);
 		break;
 	default:
 		break;
@@ -268,6 +277,7 @@ int wait (int pid){
 	return process_wait(pid);
 }
 
+/* Project2-3 System Call */
 void close (int fd){
 	struct file* target = find_file(fd);
 	if (target == NULL){
@@ -275,4 +285,16 @@ void close (int fd){
 	}
 	struct thread* curr = thread_current();
 	curr->fd_table[fd] = NULL;
+}
+
+
+/* Project2-3 System Call */
+void seek (int fd, unsigned position){
+	struct file* file = find_file(fd);
+	file_seek(file,position);
+}
+
+unsigned tell (int fd){
+	struct file* file = find_file(fd);
+	return file_tell(file);
 }
