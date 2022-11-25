@@ -183,8 +183,11 @@ int open (const char *file){
 	if (ret_file == NULL){
 		return -1;
 	}
+	if (curr->fd_idx >= FDT_COUNT_LIMIT){
+		return -1;
+	}
 	/* Validation 완료 후, FD Table을 순회해서 체크 */
-	int i = 2;
+	int i = curr->fd_idx;
 	while(fdt[i] != 0){
 		i++;
 	}
