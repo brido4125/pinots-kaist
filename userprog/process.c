@@ -179,7 +179,10 @@ __do_fork (void *aux) {
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 
-
+	if (parent->fd_idx == FDT_COUNT_LIMIT){
+		goto error;
+	}
+			
 	int fd_index = 2;
 	struct file** parent_fdt = parent->fd_table;
 	struct file** child_fdt = current->fd_table;
