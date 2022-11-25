@@ -183,17 +183,16 @@ int open (const char *file){
 	if (ret_file == NULL){
 		return -1;
 	}
+	/* Validation 완료 후, FD Table을 순회해서 체크 */
+	while (curr->fd_idx < FDT_COUNT_LIMIT && fdt[curr->fd_idx])
+    {
+        curr->fd_idx++;
+    }
 	if (curr->fd_idx >= FDT_COUNT_LIMIT){
 		return -1;
 	}
-	/* Validation 완료 후, FD Table을 순회해서 체크 */
-	int i = curr->fd_idx;
-	while(fdt[i] != 0){
-		i++;
-	}
-	fdt[i] = ret_file;
-	curr->fd_idx = i;
-	return i;
+	fdt[curr->fd_idx] = ret_file;
+	return curr->fd_idx;
 }
 
 /* Project2-3 System Call */
@@ -285,6 +284,9 @@ int wait (int pid){
 
 /* Project2-3 System Call */
 void close (int fd){
+	if (fd < 0 || fd >= FDT_COUNT_LIMIT){
+		return;
+	}
 	struct file* target = find_file(fd);
 	if (target == NULL){
 		return;

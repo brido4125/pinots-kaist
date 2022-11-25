@@ -193,6 +193,8 @@ __do_fork (void *aux) {
 		fd_index++;
 	}
 
+	current->fd_idx = parent->fd_idx;
+
 	sema_up(&current->fork_sema);
 	//process_init ();
 
