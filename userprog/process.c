@@ -294,6 +294,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+	file_close(curr->runnig_file);
 	sema_up(&curr->wait_sema);
 	sema_down(&curr->free_sema);
 	process_cleanup ();//추후 실험 필요	
@@ -430,12 +431,15 @@ load (const char *file_name, struct intr_frame *if_) {
 	}
 
 	/* Open executable file. */
+	
 	file = filesys_open (file_name);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		exit(-1);
 		//goto done;
 	}
+	t->runnig_file = file;
+	file_deny_write(file);
 
 	/* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -516,7 +520,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close (file);
+	//file_close (file);
 	return success;
 }
 

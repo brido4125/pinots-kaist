@@ -123,6 +123,10 @@ struct thread {
 	struct semaphore fork_sema;
 	struct semaphore free_sema;
 	struct semaphore wait_sema;
+
+	/* System Call */
+	struct file* runnig_file;
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
