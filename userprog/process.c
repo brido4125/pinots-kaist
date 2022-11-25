@@ -155,21 +155,7 @@ __do_fork (void *aux) {
 	/* 1. Read the cpu context to local stack. */
 	memcpy (&if_, &parent->pf, sizeof (struct intr_frame));
 
-	// memcpy(&if_.R.rbx,&parent->pf.R.rbx,8);
-	// memcpy(&if_.rsp,&parent->pf.rsp,8);
-	// memcpy(&if_.R.rbp,&parent->pf.R.rbp,8);
-	// memcpy(&if_.R.r11,&parent->pf.R.r11,8);
-	// memcpy(&if_.R.r12,&parent->pf.R.r12,8);
-	// memcpy(&if_.R.r13,&parent->pf.R.r13,8);
-	// memcpy(&if_.R.r14,&parent->pf.R.r14,8);
 
-	// if_.R.rbx = parent->pf.R.rbx;
-	// if_.rsp = parent->pf.rsp;
-	// if_.R.rbp = parent->pf.R.rbp;
-	// if_.R.r12 = parent->pf.R.r12;
-	// if_.R.r13 = parent->pf.R.r13;
-	// if_.R.r14 = parent->pf.R.r14;
-	// if_.R.r15 = parent->pf.R.r15;
 	if_.R.rax = 0;//Fork()가 자식에게 리턴할때는 0 리턴
 
 	/* 2. Duplicate PT */
@@ -199,9 +185,6 @@ __do_fork (void *aux) {
 	struct file** child_fdt = current->fd_table;
 	while (fd_index < FDT_COUNT_LIMIT)
 	{
-		if(parent->fd_idx < 0){
-			break;
-		}
 		struct file* parent_file = parent_fdt[fd_index];
 		if(parent_file != 0){
 			struct file* child_file = file_duplicate(parent_file);
