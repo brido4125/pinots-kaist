@@ -88,6 +88,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 		return TID_ERROR;
 	}
 	struct thread* child = get_child(child_id);
+	
 	sema_down(&child->fork_sema);
 	return child_id;
 }
@@ -152,7 +153,23 @@ __do_fork (void *aux) {
 	parent_if = &parent->pf;
 
 	/* 1. Read the cpu context to local stack. */
-	memcpy (&if_, parent_if, sizeof (struct intr_frame));
+	memcpy (&if_, &parent->pf, sizeof (struct intr_frame));
+
+	// memcpy(&if_.R.rbx,&parent->pf.R.rbx,8);
+	// memcpy(&if_.rsp,&parent->pf.rsp,8);
+	// memcpy(&if_.R.rbp,&parent->pf.R.rbp,8);
+	// memcpy(&if_.R.r11,&parent->pf.R.r11,8);
+	// memcpy(&if_.R.r12,&parent->pf.R.r12,8);
+	// memcpy(&if_.R.r13,&parent->pf.R.r13,8);
+	// memcpy(&if_.R.r14,&parent->pf.R.r14,8);
+
+	// if_.R.rbx = parent->pf.R.rbx;
+	// if_.rsp = parent->pf.rsp;
+	// if_.R.rbp = parent->pf.R.rbp;
+	// if_.R.r12 = parent->pf.R.r12;
+	// if_.R.r13 = parent->pf.R.r13;
+	// if_.R.r14 = parent->pf.R.r14;
+	// if_.R.r15 = parent->pf.R.r15;
 	if_.R.rax = 0;//Fork()가 자식에게 리턴할때는 0 리턴
 
 	/* 2. Duplicate PT */
@@ -279,7 +296,7 @@ process_exit (void) {
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	sema_up(&curr->wait_sema);
 	sema_down(&curr->free_sema);
-	process_cleanup ();
+	process_cleanup ();//추후 실험 필요	
 }
 
 /* Free the current process's resources. */
