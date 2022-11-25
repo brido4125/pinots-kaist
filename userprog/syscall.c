@@ -114,6 +114,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		f->R.rax = tell(f->R.rdi);
 		break;
 	default:
+		thread_exit();
 		break;
 	}
 	//printf ("system call!\n");
@@ -245,7 +246,9 @@ int write (int fd, const void *buffer, unsigned size) {
     if (fd == 1) {
         putbuf(buffer, size);
         return size;
-    }else{
+    }else if(fd == 0){
+		return -1;
+	}else{
 		struct file* ret_file = find_file(fd);
 		if (ret_file == NULL){
 			return -1;
