@@ -238,7 +238,7 @@ thread_create (const char *name, int priority,
 	if(t->fd_table == NULL){
 		return TID_ERROR;
 	}
-	t->fd_idx = -1;
+	t->fd_idx = 2;
 	t->fd_table[0] = STDIN_FILENO;
 	t->fd_table[1] = STDOUT_FILENO;
 
