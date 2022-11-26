@@ -301,15 +301,22 @@ int wait (int pid){
 
 /* Project2-3 System Call */
 void close (int fd){
-	if (fd < 0 || fd >= FDT_COUNT_LIMIT){
+	struct file *fileobj = find_file(fd);
+	if (fileobj == NULL) {
 		return;
 	}
-	struct file* target = find_file(fd);
-	if (target == NULL){
+	remove_file(fd); 
+}
+
+void remove_file(int fd)
+{
+	struct thread *cur = thread_current();
+
+	// Error - invalid fd
+	if (fd < 0 || fd >= FDT_COUNT_LIMIT)
 		return;
-	}
-	struct thread* curr = thread_current();
-	curr->fd_table[fd] = NULL;
+
+	cur->fd_table[fd] = NULL;
 }
 
 
