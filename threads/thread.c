@@ -241,6 +241,9 @@ thread_create (const char *name, int priority,
 	t->fd_idx = 2;
 	t->fd_table[0] = STDIN_FILENO;
 	t->fd_table[1] = STDOUT_FILENO;
+	/* Extra : Dup2 */
+	t->stdin_count = 1;
+	t->stdout_count = 1;
 
 	/* Add to run queue. */
 	thread_unblock (t);
