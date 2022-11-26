@@ -33,6 +33,7 @@ int wait (int pid);
 void close (int fd);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
+int add_file(struct file *file);
 
 
 /* System call.
@@ -177,22 +178,38 @@ int exec (const char *cmd_line){
 /* Project2-3 System Call */
 int open (const char *file){
 	check_address(file);
-	struct thread* curr = thread_current();
-	struct file** fdt = curr->fd_table;
-	struct file* ret_file = filesys_open(file);
-	if (ret_file == NULL){
+	struct file *fileobj = filesys_open(file);
+
+	if (fileobj == NULL) {
 		return -1;
 	}
-	/* Validation 완료 후, FD Table을 순회해서 체크 */
-	while (curr->fd_idx < FDT_COUNT_LIMIT && fdt[curr->fd_idx])
-    {
-        curr->fd_idx++;
-    }
-	if (curr->fd_idx >= FDT_COUNT_LIMIT){
-		return -1;
+
+	int fd = add_file(fileobj); // fdt : file data table
+
+	// fd table이 가득 찼다면
+	if (fd == -1) {
+		file_close(fileobj);
 	}
-	fdt[curr->fd_idx] = ret_file;
-	return curr->fd_idx;
+	return fd;
+}
+
+int add_file(struct file *file){
+	struct thread *cur = thread_current();
+	struct file **fdt = cur->fd_table;
+
+	/* fd의 위치가 제한 범위를 넘지 않고, fd_table의 인덱스 위치와 일치한다면 */
+	// cur->fd_idx 가 어디있지? -> thread.h의 thread 구조체 안에 fd_table과 함께 선언해준다.
+	// 제한범위를 나타낼 FDCOUNT_LIMIT 등도 thread.h 파일 내에 선언(#define)해준다.
+	while (cur->fd_idx < FDT_COUNT_LIMIT && fdt[cur->fd_idx]) {
+		cur->fd_idx++;
+	}
+
+	// fdt가 가득 찼다면
+	if (cur->fd_idx >= FDT_COUNT_LIMIT)
+		return -1;
+
+	fdt[cur->fd_idx] = file;
+	return cur->fd_idx;
 }
 
 /* Project2-3 System Call */
