@@ -138,6 +138,12 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 }
 #endif
 
+struct MapElem
+{
+	uintptr_t key;
+	uintptr_t value;
+};
+
 /* A thread function that copies parent's execution context.
  * Hint) parent->tf does not hold the userland context of the process.
  *       That is, you are required to pass second argument of process_fork to
@@ -185,21 +191,39 @@ __do_fork (void *aux) {
 	if (parent->fd_idx == FDCOUNT_LIMIT)
 		goto error;
 
-	int fd_index = 2;
-	struct file** parent_fdt = parent->fd_table;
-	struct file** child_fdt = current->fd_table;
-	while (fd_index < FDCOUNT_LIMIT)
-	{
-		struct file* parent_file = parent_fdt[fd_index];
-		if(parent_file != NULL){
-			if(parent_file > 2){
-				struct file* child_file = file_duplicate(parent_file);
-				child_fdt[fd_index] = child_file;
-			}else{
-				child_fdt[fd_index] = parent_file;
+	const int MAPLEN = 10;
+	struct MapElem map[10];
+	int dup_count = 0;
+
+	for (int i = 0; i < FDCOUNT_LIMIT; i++) {
+		struct file *file = parent->fd_table[i];
+		if (file == NULL)
+			continue;
+
+		// If 'file' is already duplicated in child, don't duplicate again but share it
+		bool found = false;
+		// Project2-extra) linear search on key-pair array
+		for (int j = 0; j < MAPLEN; j++) {
+			if (map[j].key == file) {
+				found = true;
+				current->fd_table[i] = map[j].value;
+				break;
 			}
 		}
-		fd_index++;
+		if (!found) {
+			struct file *new_file;
+			if (file > 2)
+				new_file = file_duplicate(file);
+			else
+				new_file = file;
+
+			current->fd_table[i] = new_file;
+			// project2-extra
+			if (dup_count < MAPLEN) {
+				map[dup_count].key = file;
+				map[dup_count++].value = new_file;
+			}
+		}
 	}
 	current->fd_idx = parent->fd_idx;
 
@@ -287,10 +311,10 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	// for (int i = 0; i < FDCOUNT_LIMIT; i++)
-	// {
-	// 	curr->fd_table[i] = NULL;
-	// }
+	for (int i = 0; i < FDCOUNT_LIMIT; i++)
+	{
+		close(i);
+	}
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
 	file_close(curr->running);
 	sema_up(&curr->wait_sema);

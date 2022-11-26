@@ -34,6 +34,7 @@ void close (int fd);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 int add_file(struct file *file);
+int dup2(int oldfd, int newfd);
 
 
 /* System call.
@@ -114,12 +115,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_TELL:
 		f->R.rax = tell(f->R.rdi);
 		break;
+	case SYS_DUP2:
+		f->R.rax = dup2(f->R.rdi,f->R.rsi);
+		break;
 	default:
 		thread_exit();
 		break;
 	}
-	//printf ("system call!\n");
-	//thread_exit ();
 }
 
 /* Project2-2 User Memory Access */
@@ -232,27 +234,34 @@ int filesize (int fd){
 int read (int fd, void *buffer, unsigned size){
 	check_address(buffer);
 	off_t char_count;
+	/* Extra : Dup2 */
+	struct file* ret_file = find_file(fd);
+	if (ret_file == NULL){
+			return -1;
+		}
 	/* Keyboard 입력 처리 */
 	if(fd == 0){
-		while (char_count < size)
-		{
-			char key = input_getc();
-			*(char*)buffer = key;
-			char_count++;
-			(char*)buffer++;
-			if (key == '\0'){
-				break;
-			}
+		if(thread_current()->stdin_count == 0){
+			NOT_REACHED();
+			remove_file(fd);
+			return -1;
 		}
+		while (char_count < size)
+			{
+				char key = input_getc();
+				*(char*)buffer = key;
+				char_count++;
+				(char*)buffer++;
+				if (key == '\0'){
+					break;
+				}
+			}
+		
 	}
 	else if(fd == 1){
 		return -1;
 	}
 	else{
-		struct file* ret_file = find_file(fd);
-		if (ret_file == NULL){
-			return -1;
-		}
 		lock_acquire(&lock);
 		char_count = file_read(ret_file,buffer,size);
 		lock_release(&lock);
@@ -264,16 +273,20 @@ int read (int fd, void *buffer, unsigned size){
 int write (int fd, const void *buffer, unsigned size) {
 	check_address(buffer);
 	off_t write_size = 0;
+	/* Extra : Dup2*/
+	struct file* ret_file = find_file(fd);
+	if (ret_file == NULL){
+		return -1;
+	}
     if (fd == 1) {
+		if(thread_current()->stdout_count == 0){
+			return -1;
+		}
         putbuf(buffer, size);
         return size;
     }else if(fd == 0){
 		return -1;
 	}else{
-		struct file* ret_file = find_file(fd);
-		if (ret_file == NULL){
-			return -1;
-		}
 		lock_acquire(&lock);
 		write_size = file_write(ret_file,buffer,size);
 		lock_release(&lock);
@@ -303,11 +316,26 @@ int wait (int pid){
 
 /* Project2-3 System Call */
 void close (int fd){
-	struct file *fileobj = find_file(fd);
-	if (fileobj == NULL) {
+	struct file* close_file = find_file(fd);
+	if (close_file == NULL) {
 		return;
 	}
-	remove_file(fd); 
+	/* Dup 2 */
+	struct thread* curr = thread_current();
+	if(fd == 0 || close_file == STDIN){
+		curr->stdin_count--;
+	}else if(fd == 1 || close_file == STDOUT){
+		curr->stdout_count--;
+	}
+	remove_file(fd);
+	if(fd <= 1 || close_file <= 2){
+		return;
+	}
+	if(close_file->dup_count == 0){
+		file_close(close_file); 
+	}else{
+		close_file->dup_count--;
+	}
 }
 
 void remove_file(int fd)
@@ -331,4 +359,29 @@ void seek (int fd, unsigned position){
 unsigned tell (int fd){
 	struct file* file = find_file(fd);
 	return file_tell(file);
+}
+
+int dup2(int oldfd, int newfd){
+	/* Oldfd File Validation */
+	struct file* old_file = find_file(oldfd);
+	if(old_file == NULL){
+		return -1;
+	}
+	if (oldfd == newfd){
+		return newfd;
+	}
+	/* Check old_file STDIN or STDOUT*/
+	struct thread* curr = thread_current();
+
+	if(old_file == STDIN){
+		curr->stdin_count++;
+	}else if(old_file == STDOUT){
+		curr->stdout_count++;
+	}else{
+		old_file->dup_count++;
+	}
+	/* Close Newfd File */
+	close(newfd);
+	curr->fd_table[newfd] = old_file;
+	return newfd;
 }
