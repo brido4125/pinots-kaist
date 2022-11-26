@@ -178,6 +178,7 @@ int exec (const char *cmd_line){
 /* Project2-3 System Call */
 int open (const char *file){
 	check_address(file);
+	lock_acquire(&lock);
 	struct file *fileobj = filesys_open(file);
 
 	if (fileobj == NULL) {
@@ -190,6 +191,7 @@ int open (const char *file){
 	if (fd == -1) {
 		file_close(fileobj);
 	}
+	lock_release(&lock);
 	return fd;
 }
 

@@ -18,9 +18,6 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
-#include "threads/synch.h"
-#include "userprog/syscall.h"
-
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -80,7 +77,7 @@ initd (void *f_name) {
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 tid_t
-process_fork (const char *name, struct intr_frame *if_ UNUSED) {
+process_fork (const char *name, struct intr_frame *if_) {
 	/* Clone current thread to new thread.*/
 	struct thread* curr = thread_current();
 	memcpy(&curr->parent_if,if_,sizeof(struct intr_frame));
@@ -89,8 +86,10 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 		return TID_ERROR;
 	}
 	struct thread* child = get_child_with_pid(child_id);
-	
 	sema_down(&child->fork_sema);
+	if (child->exit_status == -1) {
+		return TID_ERROR;
+	}
 	return child_id;
 }
 
@@ -180,27 +179,28 @@ __do_fork (void *aux) {
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 
-	// if (parent->fd_idx == FDT_COUNT_LIMIT){
-	// 	goto error;
-	// }
-			
-	for (int i = 0; i < FDCOUNT_LIMIT; i++)
-    {
-        struct file *file = parent->fd_table[i];
-        if (file == NULL)
-            continue;
-        // if 'file' is already duplicated in child don't duplicate again but share it
-        bool found = false;
-        if (!found)
-        {
-            struct file *new_file;
-            if (file > 2)
-                new_file = file_duplicate(file);
-            else
-                new_file = file;
-            current->fd_table[i] = new_file;
-        }
-    }
+	/* System call 추가 */
+	// process_init ();
+	// multi-oom) Failed to duplicate
+	if (parent->fd_idx == FDCOUNT_LIMIT)
+		goto error;
+
+	int fd_index = 2;
+	struct file** parent_fdt = parent->fd_table;
+	struct file** child_fdt = current->fd_table;
+	while (fd_index < FDCOUNT_LIMIT)
+	{
+		struct file* parent_file = parent_fdt[fd_index];
+		if(parent_file != NULL){
+			if(parent_file > 2){
+				struct file* child_file = file_duplicate(parent_file);
+				child_fdt[fd_index] = child_file;
+			}else{
+				child_fdt[fd_index] = parent_file;
+			}
+		}
+		fd_index++;
+	}
 	current->fd_idx = parent->fd_idx;
 
 	sema_up(&current->fork_sema);
@@ -287,10 +287,10 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	for (int i = 0; i < FDCOUNT_LIMIT; i++)
-	{
-		close(i);
-	}
+	// for (int i = 0; i < FDCOUNT_LIMIT; i++)
+	// {
+	// 	curr->fd_table[i] = NULL;
+	// }
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
 	file_close(curr->running);
 	sema_up(&curr->wait_sema);
