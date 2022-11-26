@@ -34,6 +34,7 @@ void close (int fd);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 int add_file(struct file *file);
+int dup2(int oldfd, int newfd);
 
 
 /* System call.
@@ -114,12 +115,25 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_TELL:
 		f->R.rax = tell(f->R.rdi);
 		break;
+	case SYS_DUP2:	// project2 - extra
+		f->R.rax = dup2(f->R.rdi, f->R.rsi);
+		break;
 	default:
 		thread_exit();
 		break;
 	}
 	//printf ("system call!\n");
 	//thread_exit ();
+}
+
+int dup2(int oldfd, int newfd) {
+	// 기존의 파일 디스크립터 oldfd를 새로운 newfd로 복제하여 생성하는 함수.
+	// newfd가 이전에 열렸다면, 재사용하기 전에 자동으로 닫힌다.
+	// oldfd가 불분명하면 이 시스템 콜은 실패하며 -1을 리턴, newfd는 닫히지 않는다.
+	// oldfd가 명확하고 newfd가 oldfd와 같은 값을 가진다면, dup2() 함수는 실행되지 않고 newfd값을 그대로 반환
+	
+
+	return newfd;
 }
 
 /* Project2-2 User Memory Access */
@@ -232,8 +246,19 @@ int filesize (int fd){
 int read (int fd, void *buffer, unsigned size){
 	check_address(buffer);
 	off_t char_count;
+	struct thread *cur = thread_current();
+
+	if (fd == NULL){
+		return -1;
+	}
 	/* Keyboard 입력 처리 */
 	if(fd == 0){
+		if (cur->stdin_count == 0){
+			// 더이상 열려있는 stdin fd가 없다.
+			NOT_REACHED();
+			close(fd);
+			return -1;
+		}
 		while (char_count < size)
 		{
 			char key = input_getc();
@@ -264,7 +289,13 @@ int read (int fd, void *buffer, unsigned size){
 int write (int fd, const void *buffer, unsigned size) {
 	check_address(buffer);
 	off_t write_size = 0;
+	struct thread *cur = thread_current();
     if (fd == 1) {
+		if (cur->stdout_count == 0){
+			// 더이상 열려있는 stdout fd가 없다.
+			close(fd);
+			return -1;
+		}
         putbuf(buffer, size);
         return size;
     }else if(fd == 0){
