@@ -183,19 +183,23 @@ __do_fork (void *aux) {
 		goto error;
 	}
 			
-	int fd_index = 2;
-	struct file** parent_fdt = parent->fd_table;
-	struct file** child_fdt = current->fd_table;
-	while (fd_index < FDT_COUNT_LIMIT)
-	{
-		struct file* parent_file = parent_fdt[fd_index];
-		if(parent_file != 0){
-			struct file* child_file = file_duplicate(parent_file);
-			child_fdt[fd_index] = child_file;
-		}
-		fd_index++;
-	}
-
+	for (int i = 0; i < FDT_COUNT_LIMIT; i++)
+    {
+        struct file *file = parent->fd_table[i];
+        if (file == NULL)
+            continue;
+        // if 'file' is already duplicated in child don't duplicate again but share it
+        bool found = false;
+        if (!found)
+        {
+            struct file *new_file;
+            if (file > 2)
+                new_file = file_duplicate(file);
+            else
+                new_file = file;
+            current->fd_table[i] = new_file;
+        }
+    }
 	current->fd_idx = parent->fd_idx;
 
 	sema_up(&current->fork_sema);
