@@ -31,7 +31,7 @@ typedef int tid_t;
 
 /* System Call */
 #define FDT_PAGES 3 //To Do : 추후 수정 시도
-#define FDT_COUNT_LIMIT FDT_PAGES *(1<<9) // limit fdidx
+#define FDCOUNT_LIMIT FDT_PAGES *(1<<9) // limit fdidx
 
 /* A kernel thread or user process.
  *

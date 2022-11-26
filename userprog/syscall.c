@@ -200,12 +200,12 @@ int add_file(struct file *file){
 	/* fd의 위치가 제한 범위를 넘지 않고, fd_table의 인덱스 위치와 일치한다면 */
 	// cur->fd_idx 가 어디있지? -> thread.h의 thread 구조체 안에 fd_table과 함께 선언해준다.
 	// 제한범위를 나타낼 FDCOUNT_LIMIT 등도 thread.h 파일 내에 선언(#define)해준다.
-	while (cur->fd_idx < FDT_COUNT_LIMIT && fdt[cur->fd_idx]) {
+	while (cur->fd_idx < FDCOUNT_LIMIT && fdt[cur->fd_idx]) {
 		cur->fd_idx++;
 	}
 
 	// fdt가 가득 찼다면
-	if (cur->fd_idx >= FDT_COUNT_LIMIT)
+	if (cur->fd_idx >= FDCOUNT_LIMIT)
 		return -1;
 
 	fdt[cur->fd_idx] = file;
@@ -214,7 +214,7 @@ int add_file(struct file *file){
 
 /* Project2-3 System Call */
 int filesize (int fd){
-	if(fd < 0 || fd >= FDT_COUNT_LIMIT){
+	if(fd < 0 || fd >= FDCOUNT_LIMIT){
 		return -1;
 	}
 	struct thread* curr = thread_current();
@@ -282,7 +282,7 @@ int write (int fd, const void *buffer, unsigned size) {
 /* Project2-3 System Call */
 struct file* find_file(int fd){
 	struct thread* curr = thread_current();
-	if(fd < 0 || fd >= FDT_COUNT_LIMIT){
+	if(fd < 0 || fd >= FDCOUNT_LIMIT){
 		return NULL;
 	}
 	return curr->fd_table[fd];
@@ -313,7 +313,7 @@ void remove_file(int fd)
 	struct thread *cur = thread_current();
 
 	// Error - invalid fd
-	if (fd < 0 || fd >= FDT_COUNT_LIMIT)
+	if (fd < 0 || fd >= FDCOUNT_LIMIT)
 		return;
 
 	cur->fd_table[fd] = NULL;

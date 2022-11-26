@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "intrinsic.h"
 #include "threads/synch.h"
+#include "userprog/syscall.h"
 
 #ifdef VM
 #include "vm/vm.h"
@@ -179,11 +180,11 @@ __do_fork (void *aux) {
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 
-	if (parent->fd_idx == FDT_COUNT_LIMIT){
-		goto error;
-	}
+	// if (parent->fd_idx == FDT_COUNT_LIMIT){
+	// 	goto error;
+	// }
 			
-	for (int i = 0; i < FDT_COUNT_LIMIT; i++)
+	for (int i = 0; i < FDCOUNT_LIMIT; i++)
     {
         struct file *file = parent->fd_table[i];
         if (file == NULL)
@@ -286,9 +287,9 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	for (int i = 0; i < FDT_COUNT_LIMIT; i++)
+	for (int i = 0; i < FDCOUNT_LIMIT; i++)
 	{
-		curr->fd_table[i] = NULL;
+		close(i);
 	}
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
 	file_close(curr->runnig_file);
