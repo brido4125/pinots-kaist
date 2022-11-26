@@ -83,12 +83,12 @@ tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
 	struct thread* curr = thread_current();
-	memcpy(&curr->pf,if_,sizeof(struct intr_frame));
+	memcpy(&curr->parent_if,if_,sizeof(struct intr_frame));
 	tid_t child_id = thread_create (name,PRI_DEFAULT, __do_fork, curr);//parent -> child로 context 스위칭
 	if(child_id == TID_ERROR){
 		return TID_ERROR;
 	}
-	struct thread* child = get_child(child_id);
+	struct thread* child = get_child_with_pid(child_id);
 	
 	sema_down(&child->fork_sema);
 	return child_id;
@@ -151,10 +151,10 @@ __do_fork (void *aux) {
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if;
 	bool succ = true;
-	parent_if = &parent->pf;
+	parent_if = &parent->parent_if;
 
 	/* 1. Read the cpu context to local stack. */
-	memcpy (&if_, &parent->pf, sizeof (struct intr_frame));
+	memcpy (&if_, &parent->parent_if, sizeof (struct intr_frame));
 
 
 	if_.R.rax = 0;//Fork()가 자식에게 리턴할때는 0 리턴
@@ -266,7 +266,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	struct thread* child = get_child(child_tid);
+	struct thread* child = get_child_with_pid(child_tid);
 	struct thread* curr = thread_current();//parent process
 	if(child == NULL){
 		return -1;
@@ -292,7 +292,7 @@ process_exit (void) {
 		close(i);
 	}
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
-	file_close(curr->runnig_file);
+	file_close(curr->running);
 	sema_up(&curr->wait_sema);
 	sema_down(&curr->free_sema);
 	process_cleanup ();//추후 실험 필요	
@@ -436,7 +436,7 @@ load (const char *file_name, struct intr_frame *if_) {
 		exit(-1);
 		//goto done;
 	}
-	t->runnig_file = file;
+	t->running = file;
 	file_deny_write(file);
 
 	/* Read and verify executable header. */

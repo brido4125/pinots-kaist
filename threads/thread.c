@@ -845,7 +845,7 @@ void mlfqs_recalc(void){
 }
 
 /* Project2-3 System Call */
-struct thread* get_child(tid_t pid){
+struct thread* get_child_with_pid(tid_t pid){
 	struct thread* curr = thread_current();
 	struct list* childs = &curr->child_list;
 	struct list_elem* elem = list_begin(childs);

@@ -119,13 +119,13 @@ struct thread {
 	/* System Call */
 	struct list child_list;
 	struct list_elem child_elem;
-	struct intr_frame pf;
+	struct intr_frame parent_if;
 	struct semaphore fork_sema;
 	struct semaphore free_sema;
 	struct semaphore wait_sema;
 
 	/* System Call */
-	struct file* runnig_file;
+	struct file* running;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -197,6 +197,6 @@ void mlfqs_increment(void);
 void mlfqs_recalc(void);
 
 /* Project2-3 System Call */
-struct thread* get_child(tid_t pid);
+struct thread* get_child_with_pid(tid_t pid);
 #endif 
 /* threads/thread.h */
