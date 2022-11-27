@@ -67,7 +67,7 @@ initd (void *f_name) {
 	supplemental_page_table_init (&thread_current ()->spt);
 #endif
 
-	process_init ();
+	// process_init ();
 
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
@@ -76,21 +76,31 @@ initd (void *f_name) {
 
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
-tid_t
-process_fork (const char *name, struct intr_frame *if_) {
-	/* Clone current thread to new thread.*/
-	struct thread* curr = thread_current();
-	memcpy(&curr->parent_if,if_,sizeof(struct intr_frame));
-	tid_t child_id = thread_create (name,PRI_DEFAULT, __do_fork, curr);//parent -> child로 context 스위칭
-	if(child_id == TID_ERROR){
+// tid_t
+// process_fork (const char *name, struct intr_frame *if_ UNUSED) {
+// 	/* Clone current thread to new thread.*/
+// 	return thread_create (name,
+// 			PRI_DEFAULT, __do_fork, thread_current ());
+// }
+
+/* System Call 추가 */
+tid_t process_fork(const char *name, struct intr_frame *if_) {
+	// 현재 프로세스를 새 프로세스로 복제
+	struct thread *cur = thread_current();
+	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame));
+
+	tid_t tid = thread_create(name, PRI_DEFAULT, __do_fork, cur);
+	if (tid == TID_ERROR) {
 		return TID_ERROR;
 	}
-	struct thread* child = get_child_with_pid(child_id);
+
+	struct thread *child = get_child_with_pid(tid);
 	sema_down(&child->fork_sema);
 	if (child->exit_status == -1) {
 		return TID_ERROR;
 	}
-	return child_id;
+
+	return tid;
 }
 
 #ifndef VM
@@ -138,11 +148,13 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 }
 #endif
 
-struct MapElem
-{
+
+/* Extra: Dup2 */
+struct dict_elem{
 	uintptr_t key;
 	uintptr_t value;
 };
+
 
 /* A thread function that copies parent's execution context.
  * Hint) parent->tf does not hold the userland context of the process.
@@ -157,6 +169,10 @@ __do_fork (void *aux) {
 	struct intr_frame *parent_if;
 	bool succ = true;
 	parent_if = &parent->parent_if;
+
+	const int DICTLEN = 100;
+	struct dict_elem dup_file_dict[100];
+	int dup_idx = 0;
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy (&if_, &parent->parent_if, sizeof (struct intr_frame));
@@ -191,39 +207,37 @@ __do_fork (void *aux) {
 	if (parent->fd_idx == FDCOUNT_LIMIT)
 		goto error;
 
-	const int MAPLEN = 10;
-	struct MapElem map[10];
-	int dup_count = 0;
-
 	for (int i = 0; i < FDCOUNT_LIMIT; i++) {
-		struct file *file = parent->fd_table[i];
-		if (file == NULL)
+		struct file *f = parent->fd_table[i];
+		if (f == NULL)
 			continue;
 
 		// If 'file' is already duplicated in child, don't duplicate again but share it
 		bool found = false;
-		// Project2-extra) linear search on key-pair array
-		for (int j = 0; j < MAPLEN; j++) {
-			if (map[j].key == file) {
+    
+		for (int j = 0; j <= dup_idx; j++){
+			if (dup_file_dict[j].key == f){
+				current->fd_table[i] = dup_file_dict[j].value;
 				found = true;
-				current->fd_table[i] = map[j].value;
 				break;
 			}
 		}
-		if (!found) {
-			struct file *new_file;
-			if (file > 2)
-				new_file = file_duplicate(file);
-			else
-				new_file = file;
+		if (found)
+			continue;
+		struct file *new_f;
+		if (f>2)
+			new_f = file_duplicate(f);
+		else
+			new_f = f;
 
-			current->fd_table[i] = new_file;
-			// project2-extra
-			if (dup_count < MAPLEN) {
-				map[dup_count].key = file;
-				map[dup_count++].value = new_file;
-			}
+		current->fd_table[i] = new_f;
+
+		if(dup_idx<DICTLEN){
+			dup_file_dict[dup_idx].key = f;
+			dup_file_dict[dup_idx].value = new_f;
+			dup_idx ++;
 		}
+
 	}
 	current->fd_idx = parent->fd_idx;
 

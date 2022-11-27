@@ -239,6 +239,8 @@ thread_create (const char *name, int priority,
 		return TID_ERROR;
 	}
 	t->fd_idx = 2;
+
+
 	t->fd_table[0] = STDIN;
 	t->fd_table[1] = STDOUT;
 	/* Extra : Dup2 */
@@ -423,7 +425,7 @@ void test_max_priority(int new_priority){
 	struct list_elem *e= list_begin(&ready_list);
 	struct thread *t = list_entry(e, struct thread, elem);
     
-	if (run_priority < t->priority)
+	if (run_priority < t->priority && !intr_context())
 	{
 		thread_yield();
 	}
