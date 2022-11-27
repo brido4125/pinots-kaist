@@ -149,10 +149,13 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 #endif
 
 
+/* Extra: Dup2 */
 struct dict_elem{
 	uintptr_t key;
 	uintptr_t value;
 };
+
+
 /* A thread function that copies parent's execution context.
  * Hint) parent->tf does not hold the userland context of the process.
  *       That is, you are required to pass second argument of process_fork to
@@ -211,6 +214,7 @@ __do_fork (void *aux) {
 
 		// If 'file' is already duplicated in child, don't duplicate again but share it
 		bool found = false;
+    
 		for (int j = 0; j <= dup_idx; j++){
 			if (dup_file_dict[j].key == f){
 				current->fd_table[i] = dup_file_dict[j].value;
@@ -233,6 +237,7 @@ __do_fork (void *aux) {
 			dup_file_dict[dup_idx].value = new_f;
 			dup_idx ++;
 		}
+
 	}
 	current->fd_idx = parent->fd_idx;
 
@@ -320,10 +325,10 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	// for (int i = 0; i < FDCOUNT_LIMIT; i++)
-	// {
-	// 	curr->fd_table[i] = NULL;
-	// }
+	for (int i = 0; i < FDCOUNT_LIMIT; i++)
+	{
+		close(i);
+	}
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
 	file_close(curr->running);
 	sema_up(&curr->wait_sema);

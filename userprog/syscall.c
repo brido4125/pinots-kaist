@@ -35,7 +35,8 @@ void seek (int fd, unsigned position);
 unsigned tell (int fd);
 int add_file(struct file *file);
 int dup2(int oldfd, int newfd);
-void remove_file(int fd, struct file *fileobj);
+void remove_file(int fd);
+
 
 
 /* System call.
@@ -126,8 +127,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		thread_exit();
 		break;
 	}
-	//printf ("system call!\n");
-	//thread_exit ();
 }
 
 int dup2(int oldfd, int newfd) {
@@ -288,23 +287,20 @@ int read (int fd, void *buffer, unsigned size){
 			return -1;
 		}
 		while (char_count < size)
-		{
-			char key = input_getc();
-			*(char*)buffer = key;
-			char_count++;
-			(char*)buffer++;
-			if (key == '\0'){
-				break;
+			{
+				char key = input_getc();
+				*(char*)buffer = key;
+				char_count++;
+				(char*)buffer++;
+				if (key == '\0'){
+					break;
+				}
 			}
-		}
+		
 	}
 	else{
-		struct file* ret_file = find_file(fd);
-		if (ret_file == NULL){
-			return -1;
-		}
 		lock_acquire(&lock);
-		char_count = file_read(ret_file,buffer,size);
+		char_count = file_read(file,buffer,size);
 		lock_release(&lock);
 	}
 	return char_count;
@@ -326,21 +322,17 @@ int write (int fd, const void *buffer, unsigned size) {
 	}
 
 
-    if (file == STDOUT) {
+  if (file == STDOUT) {
 		if (cur->stdout_count == 0){
 			// 더이상 열려있는 stdout fd가 없다.
 			close(fd);
 			return -1;
 		}
-        putbuf(buffer, size);
-        return size;
-    }else{
-		struct file* ret_file = find_file(fd);
-		if (ret_file == NULL){
-			return -1;
-		}
+    putbuf(buffer, size);
+    return size;
+  }else{
 		lock_acquire(&lock);
-		write_size = file_write(ret_file,buffer,size);
+		write_size = file_write(file,buffer,size);
 		lock_release(&lock);
 	} 
 	return write_size;
@@ -368,11 +360,10 @@ int wait (int pid){
 
 /* Project2-3 System Call */
 void close (int fd){
-	struct file *fileobj = find_file(fd);
-	if (fileobj == NULL) {
+	struct file* close_file = find_file(fd);
+	if (close_file == NULL) {
 		return;
 	}
-	// remove_file(fd, fileobj); 
 
 	struct thread *curr = thread_current();
 
@@ -381,7 +372,7 @@ void close (int fd){
 	else if(fd==1 || fileobj==STDOUT)
 		curr->stdout_count--;
 
-	remove_file(fd, fileobj);
+	remove_file(fd);
 
 
 	if(fd < 2 || fileobj <= 2){
@@ -393,10 +384,11 @@ void close (int fd){
 	}
 	else{
 		fileobj->dup_count--;
+
 	}
 }
 
-void remove_file(int fd, struct file *fileobj)
+void remove_file(int fd)
 {
 	struct thread *cur = thread_current();
 	
@@ -424,4 +416,29 @@ unsigned tell (int fd){
 		return;
 	}
 	return file_tell(file);
+}
+
+int dup2(int oldfd, int newfd){
+	/* Oldfd File Validation */
+	struct file* old_file = find_file(oldfd);
+	if(old_file == NULL){
+		return -1;
+	}
+	if (oldfd == newfd){
+		return newfd;
+	}
+	/* Check old_file STDIN or STDOUT*/
+	struct thread* curr = thread_current();
+
+	if(old_file == STDIN){
+		curr->stdin_count++;
+	}else if(old_file == STDOUT){
+		curr->stdout_count++;
+	}else{
+		old_file->dup_count++;
+	}
+	/* Close Newfd File */
+	close(newfd);
+	curr->fd_table[newfd] = old_file;
+	return newfd;
 }
