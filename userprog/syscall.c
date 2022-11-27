@@ -54,8 +54,6 @@ void remove_file(int fd);
 
 static struct lock lock;
 
-const int STDIN = 1;
-const int STDOUT = 2;
 
 void
 syscall_init (void) {
@@ -283,7 +281,7 @@ int read (int fd, void *buffer, unsigned size){
 		if (cur->stdin_count == 0){
 			// 더이상 열려있는 stdin fd가 없다.
 			NOT_REACHED();
-			close(fd);
+			remove_file(fd);
 			return -1;
 		}
 		while (char_count < size)
@@ -367,23 +365,23 @@ void close (int fd){
 
 	struct thread *curr = thread_current();
 
-	if(fd==0 || fileobj==STDIN)
+	if(fd==0 || close_file==STDIN)
 		curr->stdin_count--;
-	else if(fd==1 || fileobj==STDOUT)
+	else if(fd==1 || close_file==STDOUT)
 		curr->stdout_count--;
 
 	remove_file(fd);
 
 
-	if(fd < 2 || fileobj <= 2){
+	if(fd < 2 || close_file <= 2){
 		return;
 	}
 
-	if(fileobj->dup_count == 0){
-		file_close(fileobj);
+	if(close_file->dup_count == 0){
+		file_close(close_file);
 	}
 	else{
-		fileobj->dup_count--;
+		close_file->dup_count--;
 
 	}
 }
@@ -416,29 +414,4 @@ unsigned tell (int fd){
 		return;
 	}
 	return file_tell(file);
-}
-
-int dup2(int oldfd, int newfd){
-	/* Oldfd File Validation */
-	struct file* old_file = find_file(oldfd);
-	if(old_file == NULL){
-		return -1;
-	}
-	if (oldfd == newfd){
-		return newfd;
-	}
-	/* Check old_file STDIN or STDOUT*/
-	struct thread* curr = thread_current();
-
-	if(old_file == STDIN){
-		curr->stdin_count++;
-	}else if(old_file == STDOUT){
-		curr->stdout_count++;
-	}else{
-		old_file->dup_count++;
-	}
-	/* Close Newfd File */
-	close(newfd);
-	curr->fd_table[newfd] = old_file;
-	return newfd;
 }
