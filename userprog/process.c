@@ -76,12 +76,6 @@ initd (void *f_name) {
 
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
-// tid_t
-// process_fork (const char *name, struct intr_frame *if_ UNUSED) {
-// 	/* Clone current thread to new thread.*/
-// 	return thread_create (name,
-// 			PRI_DEFAULT, __do_fork, thread_current ());
-// }
 
 /* System Call 추가 */
 tid_t process_fork(const char *name, struct intr_frame *if_) {
@@ -170,8 +164,8 @@ __do_fork (void *aux) {
 	bool succ = true;
 	parent_if = &parent->parent_if;
 
-	const int DICTLEN = 100;
-	struct dict_elem dup_file_dict[100];
+	const int DICTLEN = 10;
+	struct dict_elem dup_file_dict[10];
 	int dup_idx = 0;
 
 	/* 1. Read the cpu context to local stack. */
@@ -242,7 +236,6 @@ __do_fork (void *aux) {
 	current->fd_idx = parent->fd_idx;
 
 	sema_up(&current->fork_sema);
-	//process_init ();
 
 	/* Finally, switch to the newly created process. */
 	if (succ){
@@ -305,11 +298,10 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	struct thread* child = get_child_with_pid(child_tid);
-	struct thread* curr = thread_current();//parent process
 	if(child == NULL){
 		return -1;
 	}
-	//printf("child = %p \n",child);
+	
 	sema_down(&child->wait_sema);
 	int ret = child->exit_status;
 	list_remove(&child->child_elem);
@@ -453,7 +445,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	process_activate (thread_current ());
 
 	/* Arguments Parsing */
-	/* 인자들을 띄어쓰기 기준으로 토크화 및 토큰의 개수 계산 */
+	/* 인자들을 띄어쓰기 기준으로 토큰화 및 토큰의 개수 계산 */
 	char* next_ptr, *ret_ptr;
 	char* argument_list[128];
 	int argument_count = 0;
@@ -561,10 +553,8 @@ done:
 }
 
 /* Argument Passing */
-/* Stack의 rsp 포인터가 점점 작아지며 stack에 데이터가 할당 되는것을 구현해야함 */
 void argument_stack(char ** parse, int count, struct intr_frame* if_){
-	// 128 너무 클 경우 수정
-	char* pointer_address[128];//아래 for문에서 스택에 담을 각 인자의 주소값을 저장하는 배열
+	char* pointer_address[128];
 	int algin_size = 0;
 	int i,j;
 
