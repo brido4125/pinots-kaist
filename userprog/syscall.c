@@ -232,9 +232,7 @@ int add_file(struct file *file){
 	struct thread *cur = thread_current();
 	struct file **fdt = cur->fd_table;
 
-	/* fd의 위치가 제한 범위를 넘지 않고, fd_table의 인덱스 위치와 일치한다면 */
-	// cur->fd_idx 가 어디있지? -> thread.h의 thread 구조체 안에 fd_table과 함께 선언해준다.
-	// 제한범위를 나타낼 FDCOUNT_LIMIT 등도 thread.h 파일 내에 선언(#define)해준다.
+	// int idx = cur->fd_idx;
 	while (cur->fd_idx < FDCOUNT_LIMIT && fdt[cur->fd_idx]) {
 		cur->fd_idx++;
 	}
@@ -252,19 +250,14 @@ int filesize (int fd){
 	if(fd < 0 || fd >= FDCOUNT_LIMIT){
 		return -1;
 	}
-	struct thread* curr = thread_current();
-	struct file** fdt = curr->fd_table;
-	struct file* ret_file = fdt[fd];
-	if(ret_file == NULL){
-		return -1;
-	}
-	return file_length(ret_file);
+	struct file *file = find_file(fd);
+	return file_length(file);
 }
 
 /* Project2-3 System Call */
 int read (int fd, void *buffer, unsigned size){
 	check_address(buffer);
-	off_t char_count;
+	off_t char_count = 0;
 	struct thread *cur = thread_current();
 	struct file *file = find_file(fd);
 
@@ -285,15 +278,15 @@ int read (int fd, void *buffer, unsigned size){
 			return -1;
 		}
 		while (char_count < size)
-			{
-				char key = input_getc();
-				*(char*)buffer = key;
-				char_count++;
-				(char*)buffer++;
-				if (key == '\0'){
-					break;
-				}
+		{
+			char key = input_getc();
+			*(char*)buffer = key;
+			char_count++;
+			(char*)buffer++;
+			if (key == '\0'){
+				break;
 			}
+		}
 		
 	}
 	else{
@@ -320,15 +313,14 @@ int write (int fd, const void *buffer, unsigned size) {
 	}
 
 
-  if (file == STDOUT) {
+    if (file == STDOUT) {
 		if (cur->stdout_count == 0){
-			// 더이상 열려있는 stdout fd가 없다.
-			close(fd);
+			remove_file(fd);
 			return -1;
 		}
-    putbuf(buffer, size);
-    return size;
-  }else{
+		putbuf(buffer, size);
+		return size;
+  	}else{
 		lock_acquire(&lock);
 		write_size = file_write(file,buffer,size);
 		lock_release(&lock);
@@ -377,7 +369,7 @@ void close (int fd){
 		return;
 	}
 
-	if(close_file->dup_count == 0){
+	if(close_file->_count == 0){
 		file_close(close_file);
 	}
 	else{
@@ -390,8 +382,6 @@ void remove_file(int fd)
 {
 	struct thread *cur = thread_current();
 	
-
-	// Error - invalid fd
 	if (fd < 0 || fd >= FDCOUNT_LIMIT)
 		return;
 
@@ -402,7 +392,7 @@ void remove_file(int fd)
 /* Project2-3 System Call */
 void seek (int fd, unsigned position){
 	struct file* file = find_file(fd);
-	if (file <= 2) {		// 초기값 2로 설정. 0: 표준 입력, 1: 표준 출력
+	if (file <= 2) {
 		return;
 	}
 	file_seek(file,position);
@@ -410,7 +400,7 @@ void seek (int fd, unsigned position){
 
 unsigned tell (int fd){
 	struct file* file = find_file(fd);
-	if (file <= 2) {		// 초기값 2로 설정. 0: 표준 입력, 1: 표준 출력
+	if (file <= 2) {
 		return;
 	}
 	return file_tell(file);
