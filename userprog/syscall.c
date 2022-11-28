@@ -369,7 +369,7 @@ void close (int fd){
 		return;
 	}
 
-	if(close_file->_count == 0){
+	if(close_file->dup_count == 0){
 		file_close(close_file);
 	}
 	else{
