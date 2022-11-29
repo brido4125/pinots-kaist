@@ -34,6 +34,9 @@ void close (int fd);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 int add_file(struct file *file);
+int dup2(int oldfd, int newfd);
+void remove_file(int fd);
+
 
 
 /* System call.
@@ -50,6 +53,7 @@ int add_file(struct file *file);
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
 static struct lock lock;
+
 
 void
 syscall_init (void) {
@@ -114,12 +118,41 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_TELL:
 		f->R.rax = tell(f->R.rdi);
 		break;
+	case SYS_DUP2:	// project2 - extra
+		f->R.rax = dup2(f->R.rdi, f->R.rsi);
+		break;
 	default:
 		thread_exit();
 		break;
 	}
-	//printf ("system call!\n");
-	//thread_exit ();
+}
+
+int dup2(int oldfd, int newfd) {
+	// 기존의 파일 디스크립터 oldfd를 새로운 newfd로 복제하여 생성하는 함수.
+	// newfd가 이전에 열렸다면, 재사용하기 전에 자동으로 닫힌다.
+	// oldfd가 불분명하면 이 시스템 콜은 실패하며 -1을 리턴, newfd는 닫히지 않는다.
+	// oldfd가 명확하고 newfd가 oldfd와 같은 값을 가진다면, dup2() 함수는 실행되지 않고 newfd값을 그대로 반환
+	struct file *file = find_file(oldfd);
+	if (file == NULL){
+		return -1;
+	}
+	if (oldfd == newfd){
+		return newfd;
+	}
+
+	struct thread *curr = thread_current();
+	struct file **curr_fd_table = curr->fd_table;
+	if (file == STDIN){
+		curr->stdin_count++;
+	}else if(file == STDOUT){
+		curr->stdout_count++;
+	}else{
+		file->dup_count++;
+	}
+
+	close(newfd);
+	curr_fd_table[newfd] = file;
+	return newfd;
 }
 
 /* Project2-2 User Memory Access */
@@ -199,9 +232,7 @@ int add_file(struct file *file){
 	struct thread *cur = thread_current();
 	struct file **fdt = cur->fd_table;
 
-	/* fd의 위치가 제한 범위를 넘지 않고, fd_table의 인덱스 위치와 일치한다면 */
-	// cur->fd_idx 가 어디있지? -> thread.h의 thread 구조체 안에 fd_table과 함께 선언해준다.
-	// 제한범위를 나타낼 FDCOUNT_LIMIT 등도 thread.h 파일 내에 선언(#define)해준다.
+	// int idx = cur->fd_idx;
 	while (cur->fd_idx < FDCOUNT_LIMIT && fdt[cur->fd_idx]) {
 		cur->fd_idx++;
 	}
@@ -219,21 +250,33 @@ int filesize (int fd){
 	if(fd < 0 || fd >= FDCOUNT_LIMIT){
 		return -1;
 	}
-	struct thread* curr = thread_current();
-	struct file** fdt = curr->fd_table;
-	struct file* ret_file = fdt[fd];
-	if(ret_file == NULL){
-		return -1;
-	}
-	return file_length(ret_file);
+	struct file *file = find_file(fd);
+	return file_length(file);
 }
 
 /* Project2-3 System Call */
 int read (int fd, void *buffer, unsigned size){
 	check_address(buffer);
-	off_t char_count;
+	off_t char_count = 0;
+	struct thread *cur = thread_current();
+	struct file *file = find_file(fd);
+
+	if (fd == NULL){
+		return -1;
+	}
+
+	if (file == NULL || file == STDOUT){
+		return -1;
+	}
+
 	/* Keyboard 입력 처리 */
-	if(fd == 0){
+	if(file == STDIN){
+		if (cur->stdin_count == 0){
+			// 더이상 열려있는 stdin fd가 없다.
+			NOT_REACHED();
+			remove_file(fd);
+			return -1;
+		}
 		while (char_count < size)
 		{
 			char key = input_getc();
@@ -244,17 +287,11 @@ int read (int fd, void *buffer, unsigned size){
 				break;
 			}
 		}
-	}
-	else if(fd == 1){
-		return -1;
+		
 	}
 	else{
-		struct file* ret_file = find_file(fd);
-		if (ret_file == NULL){
-			return -1;
-		}
 		lock_acquire(&lock);
-		char_count = file_read(ret_file,buffer,size);
+		char_count = file_read(file,buffer,size);
 		lock_release(&lock);
 	}
 	return char_count;
@@ -264,18 +301,28 @@ int read (int fd, void *buffer, unsigned size){
 int write (int fd, const void *buffer, unsigned size) {
 	check_address(buffer);
 	off_t write_size = 0;
-    if (fd == 1) {
-        putbuf(buffer, size);
-        return size;
-    }else if(fd == 0){
+	struct thread *cur = thread_current();
+	struct file *file = find_file(fd);
+
+	if (fd == NULL){
 		return -1;
-	}else{
-		struct file* ret_file = find_file(fd);
-		if (ret_file == NULL){
+	}
+
+	if (file == NULL || file == STDIN){
+		return -1;
+	}
+
+
+    if (file == STDOUT) {
+		if (cur->stdout_count == 0){
+			remove_file(fd);
 			return -1;
 		}
+		putbuf(buffer, size);
+		return size;
+  	}else{
 		lock_acquire(&lock);
-		write_size = file_write(ret_file,buffer,size);
+		write_size = file_write(file,buffer,size);
 		lock_release(&lock);
 	} 
 	return write_size;
@@ -303,18 +350,38 @@ int wait (int pid){
 
 /* Project2-3 System Call */
 void close (int fd){
-	struct file *fileobj = find_file(fd);
-	if (fileobj == NULL) {
+	struct file* close_file = find_file(fd);
+	if (close_file == NULL) {
 		return;
 	}
-	remove_file(fd); 
+
+	struct thread *curr = thread_current();
+
+	if(fd==0 || close_file==STDIN)
+		curr->stdin_count--;
+	else if(fd==1 || close_file==STDOUT)
+		curr->stdout_count--;
+
+	remove_file(fd);
+
+
+	if(fd < 2 || close_file <= 2){
+		return;
+	}
+
+	if(close_file->dup_count == 0){
+		file_close(close_file);
+	}
+	else{
+		close_file->dup_count--;
+
+	}
 }
 
 void remove_file(int fd)
 {
 	struct thread *cur = thread_current();
-
-	// Error - invalid fd
+	
 	if (fd < 0 || fd >= FDCOUNT_LIMIT)
 		return;
 
@@ -325,10 +392,16 @@ void remove_file(int fd)
 /* Project2-3 System Call */
 void seek (int fd, unsigned position){
 	struct file* file = find_file(fd);
+	if (file <= 2) {
+		return;
+	}
 	file_seek(file,position);
 }
 
 unsigned tell (int fd){
 	struct file* file = find_file(fd);
+	if (file <= 2) {
+		return;
+	}
 	return file_tell(file);
 }

@@ -67,7 +67,7 @@ initd (void *f_name) {
 	supplemental_page_table_init (&thread_current ()->spt);
 #endif
 
-	process_init ();
+	// process_init ();
 
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
@@ -76,21 +76,25 @@ initd (void *f_name) {
 
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
-tid_t
-process_fork (const char *name, struct intr_frame *if_) {
-	/* Clone current thread to new thread.*/
-	struct thread* curr = thread_current();
-	memcpy(&curr->parent_if,if_,sizeof(struct intr_frame));
-	tid_t child_id = thread_create (name,PRI_DEFAULT, __do_fork, curr);//parent -> child로 context 스위칭
-	if(child_id == TID_ERROR){
+
+/* System Call 추가 */
+tid_t process_fork(const char *name, struct intr_frame *if_) {
+	// 현재 프로세스를 새 프로세스로 복제
+	struct thread *cur = thread_current();
+	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame));
+
+	tid_t tid = thread_create(name, PRI_DEFAULT, __do_fork, cur);
+	if (tid == TID_ERROR) {
 		return TID_ERROR;
 	}
-	struct thread* child = get_child_with_pid(child_id);
+
+	struct thread *child = get_child_with_pid(tid);
 	sema_down(&child->fork_sema);
 	if (child->exit_status == -1) {
 		return TID_ERROR;
 	}
-	return child_id;
+
+	return tid;
 }
 
 #ifndef VM
@@ -138,6 +142,14 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 }
 #endif
 
+
+/* Extra: Dup2 */
+struct dict_elem{
+	uintptr_t key;
+	uintptr_t value;
+};
+
+
 /* A thread function that copies parent's execution context.
  * Hint) parent->tf does not hold the userland context of the process.
  *       That is, you are required to pass second argument of process_fork to
@@ -151,6 +163,10 @@ __do_fork (void *aux) {
 	struct intr_frame *parent_if;
 	bool succ = true;
 	parent_if = &parent->parent_if;
+
+	const int DICTLEN = 10;
+	struct dict_elem dup_file_dict[10];
+	int dup_idx = 0;
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy (&if_, &parent->parent_if, sizeof (struct intr_frame));
@@ -185,26 +201,40 @@ __do_fork (void *aux) {
 	if (parent->fd_idx == FDCOUNT_LIMIT)
 		goto error;
 
-	int fd_index = 2;
-	struct file** parent_fdt = parent->fd_table;
-	struct file** child_fdt = current->fd_table;
-	while (fd_index < FDCOUNT_LIMIT)
-	{
-		struct file* parent_file = parent_fdt[fd_index];
-		if(parent_file != NULL){
-			if(parent_file > 2){
-				struct file* child_file = file_duplicate(parent_file);
-				child_fdt[fd_index] = child_file;
-			}else{
-				child_fdt[fd_index] = parent_file;
+	for (int i = 0; i < FDCOUNT_LIMIT; i++) {
+		struct file *f = parent->fd_table[i];//부모의 파일 주소을 들고옴
+		if (f == NULL)
+			continue;
+
+		// If 'file' is already duplicated in child, don't duplicate again but share it
+		bool found = false;
+    
+		//Cache Hit
+		if (dup_file_dict[dup_idx].key == f){
+				current->fd_table[i] = dup_file_dict[dup_idx].value;
+				found = true;
+				break;
 			}
+		if (found)
+			continue;
+		struct file *new_f;
+		if (f>2)
+			new_f = file_duplicate(f);
+		else
+			new_f = f;
+
+		current->fd_table[i] = new_f;
+
+		if(dup_idx<DICTLEN){
+			dup_file_dict[dup_idx].key = f;
+			dup_file_dict[dup_idx].value = new_f;
+			dup_idx ++;
 		}
-		fd_index++;
+
 	}
 	current->fd_idx = parent->fd_idx;
 
 	sema_up(&current->fork_sema);
-	//process_init ();
 
 	/* Finally, switch to the newly created process. */
 	if (succ){
@@ -267,11 +297,10 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	struct thread* child = get_child_with_pid(child_tid);
-	struct thread* curr = thread_current();//parent process
 	if(child == NULL){
 		return -1;
 	}
-	//printf("child = %p \n",child);
+	
 	sema_down(&child->wait_sema);
 	int ret = child->exit_status;
 	list_remove(&child->child_elem);
@@ -287,10 +316,10 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	// for (int i = 0; i < FDCOUNT_LIMIT; i++)
-	// {
-	// 	curr->fd_table[i] = NULL;
-	// }
+	for (int i = 0; i < FDCOUNT_LIMIT; i++)
+	{
+		close(i);
+	}
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
 	file_close(curr->running);
 	sema_up(&curr->wait_sema);
@@ -415,7 +444,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	process_activate (thread_current ());
 
 	/* Arguments Parsing */
-	/* 인자들을 띄어쓰기 기준으로 토크화 및 토큰의 개수 계산 */
+	/* 인자들을 띄어쓰기 기준으로 토큰화 및 토큰의 개수 계산 */
 	char* next_ptr, *ret_ptr;
 	char* argument_list[128];
 	int argument_count = 0;
@@ -523,10 +552,8 @@ done:
 }
 
 /* Argument Passing */
-/* Stack의 rsp 포인터가 점점 작아지며 stack에 데이터가 할당 되는것을 구현해야함 */
 void argument_stack(char ** parse, int count, struct intr_frame* if_){
-	// 128 너무 클 경우 수정
-	char* pointer_address[128];//아래 for문에서 스택에 담을 각 인자의 주소값을 저장하는 배열
+	char* pointer_address[128];
 	int algin_size = 0;
 	int i,j;
 

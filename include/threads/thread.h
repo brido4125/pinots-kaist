@@ -33,6 +33,10 @@ typedef int tid_t;
 #define FDT_PAGES 3 //To Do : 추후 수정 시도
 #define FDCOUNT_LIMIT FDT_PAGES *(1<<9) // limit fdidx
 
+/* System Call */
+#define STDIN 1
+#define STDOUT 2
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -126,6 +130,10 @@ struct thread {
 
 	/* System Call */
 	struct file* running;
+
+	/* Extra : Dup2 */
+	int stdin_count;
+	int stdout_count;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
