@@ -202,20 +202,19 @@ __do_fork (void *aux) {
 		goto error;
 
 	for (int i = 0; i < FDCOUNT_LIMIT; i++) {
-		struct file *f = parent->fd_table[i];
+		struct file *f = parent->fd_table[i];//부모의 파일 주소을 들고옴
 		if (f == NULL)
 			continue;
 
 		// If 'file' is already duplicated in child, don't duplicate again but share it
 		bool found = false;
     
-		for (int j = 0; j <= dup_idx; j++){
-			if (dup_file_dict[j].key == f){
-				current->fd_table[i] = dup_file_dict[j].value;
+		//Cache Hit
+		if (dup_file_dict[dup_idx].key == f){
+				current->fd_table[i] = dup_file_dict[dup_idx].value;
 				found = true;
 				break;
 			}
-		}
 		if (found)
 			continue;
 		struct file *new_f;
