@@ -174,7 +174,6 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-
 	return swap_in (page, frame->kva);
 }
 

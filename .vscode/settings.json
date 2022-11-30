@@ -9,6 +9,7 @@
         "intrinsic.h": "c",
         "string.h": "c",
         "syscall.h": "c",
-        "hash.h": "c"
+        "hash.h": "c",
+        "pte.h": "c"
     }
 }
