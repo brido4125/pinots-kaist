@@ -3,6 +3,10 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "threads/vaddr.h"
+
+uint64_t my_hash_function (const struct hash_elem *e, void *aux);
+bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux);
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
