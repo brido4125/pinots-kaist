@@ -5,6 +5,10 @@
 #include "vm/inspect.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+<<<<<<< HEAD
+=======
+#include "threads/mmu.h"
+>>>>>>> 8b9ab6e911e8611c4004f64988ff0b22cd64f723
 
 uint64_t my_hash_function (const struct hash_elem *e, void *aux);
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux);
@@ -122,11 +126,15 @@ vm_evict_frame (void) {
  * space.*/
 static struct frame *
 vm_get_frame (void) {
-	struct frame *frame = NULL;
+	struct frame *frame = (struct frame*)malloc(sizeof(frame));
 	/* TODO: Fill this function. */
-
-	ASSERT (frame != NULL);
-	ASSERT (frame->page == NULL);
+	frame->kva = palloc_get_page(PAL_USER);
+	if(frame->kva == NULL){
+		PANIC("todo");
+	}
+	frame->page = NULL;
+	//ASSERT (frame != NULL);
+	//ASSERT (frame->page == NULL);
 	return frame;
 }
 
@@ -165,7 +173,12 @@ bool
 vm_claim_page (void *va) {
 	struct page *page = NULL;
 	/* TODO: Fill this function */
+<<<<<<< HEAD
 	
+=======
+	struct thread* curr = thread_current();
+	page = spt_find_page(curr->spt,va);
+>>>>>>> 8b9ab6e911e8611c4004f64988ff0b22cd64f723
 	return vm_do_claim_page (page);
 }
 
@@ -179,6 +192,10 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+<<<<<<< HEAD
+=======
+	install_page(page->va,frame->kva,page->writable);//추후 확인 필요
+>>>>>>> 8b9ab6e911e8611c4004f64988ff0b22cd64f723
 	
 	return swap_in (page, frame->kva);
 }
