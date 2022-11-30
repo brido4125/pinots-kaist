@@ -53,7 +53,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-
 		/* TODO: Insert the page into the spt. */
 	}
 err:
@@ -181,13 +180,13 @@ vm_do_claim_page (struct page *page) {
 
 /* Initialize new supplemental page table */
 void
-supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	hash_init(&spt->spt_hash,my_hash_function,)
+supplemental_page_table_init (struct supplemental_page_table *spt) {
+	hash_init(&spt->spt_hash,my_hash_function,my_less_func,NULL);
 }
 
 uint64_t my_hash_function (const struct hash_elem *e, void *aux){
 	struct page* page = hash_entry(e,struct page,hash_elem);
-	return hash_bytes(page,sizeof(page));
+	return hash_bytes(page->va,sizeof(page->va));
 }
 
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux){
@@ -195,6 +194,11 @@ bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux
 	/* Returns true if A is less than B, or false if A is greater than or equal to B */
 	struct page* A = hash_entry(a,struct page,hash_elem);
 	struct page* B = hash_entry(b,struct page,hash_elem);
+	if (A->va>B->va){
+		return !flag;
+	}
+	else 
+		return flag;
 }
 
 /* Copy supplemental page table from src to dst */

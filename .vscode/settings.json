@@ -8,6 +8,7 @@
         "flags.h": "c",
         "intrinsic.h": "c",
         "string.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "hash.h": "c"
     }
 }
