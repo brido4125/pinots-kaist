@@ -174,6 +174,19 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	hash_init(&spt->spt_hash,my_hash_function,)
+}
+
+uint64_t my_hash_function (const struct hash_elem *e, void *aux){
+	struct page* page = hash_entry(e,struct page,hash_elem);
+	return hash_bytes(page,sizeof(page));
+}
+
+bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux){
+	bool flag = false;
+	/* Returns true if A is less than B, or false if A is greater than or equal to B */
+	struct page* A = hash_entry(a,struct page,hash_elem);
+	struct page* B = hash_entry(b,struct page,hash_elem);
 }
 
 /* Copy supplemental page table from src to dst */
