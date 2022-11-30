@@ -61,20 +61,36 @@ err:
 
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
+<<<<<<< HEAD
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct list_elem* target = list_begin(spt->spt_hash.buckets);
 	struct page *page = (struct page *)malloc(sizeod(page));
 	/* TODO: Fill this function. */
 	return page;
+=======
+spt_find_page (struct supplemental_page_table *spt, void *va ) {
+	/* TODO: Fill this function. */
+	struct page* page = (struct page*)malloc(sizeof(page));		
+	page->va = va;
+	va = pg_round_down(va);//?
+	struct hash_elem* target = hash_find(&spt->spt_hash,&page->hash_elem);
+	free(page);
+	if(target == NULL){
+		return NULL;
+	}
+	return hash_entry(target,struct page,hash_elem);
+>>>>>>> 9089931d711d78fe8a960097e9b73497b6d3b5ab
 }
 
 /* Insert PAGE into spt with validation. */
 bool
-spt_insert_page (struct supplemental_page_table *spt UNUSED,
-		struct page *page UNUSED) {
+spt_insert_page (struct supplemental_page_table *spt,struct page *page) {
 	int succ = false;
 	/* TODO: Fill this function. */
-
+	if (hash_insert(&spt->spt_hash,&page->hash_elem) == NULL){
+		succ = true;
+		return succ;
+	}
 	return succ;
 }
 
@@ -172,13 +188,18 @@ vm_do_claim_page (struct page *page) {
 
 /* Initialize new supplemental page table */
 void
+<<<<<<< HEAD
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	hash_init(&spt->spt_hash,my_hash_function, NULL);
+=======
+supplemental_page_table_init (struct supplemental_page_table *spt) {
+	hash_init(&spt->spt_hash,my_hash_function,my_less_func,NULL);
+>>>>>>> 9089931d711d78fe8a960097e9b73497b6d3b5ab
 }
 
 uint64_t my_hash_function (const struct hash_elem *e, void *aux){
 	struct page* page = hash_entry(e,struct page,hash_elem);
-	return hash_bytes(page,sizeof(page));
+	return hash_bytes(page->va,sizeof(page->va));
 }
 
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux){
@@ -186,6 +207,11 @@ bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux
 	/* Returns true if A is less than B, or false if A is greater than or equal to B */
 	struct page* A = hash_entry(a,struct page,hash_elem);
 	struct page* B = hash_entry(b,struct page,hash_elem);
+	if (A->va>B->va){
+		return !flag;
+	}
+	else 
+		return flag;
 }
 
 /* Copy supplemental page table from src to dst */
