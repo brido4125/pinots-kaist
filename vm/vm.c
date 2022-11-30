@@ -62,20 +62,28 @@ err:
 
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
-spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
+spt_find_page (struct supplemental_page_table *spt, void *va ) {
 	/* TODO: Fill this function. */
-
-	return page;
+	struct page* page = (struct page*)malloc(sizeof(page));		
+	page->va = va;
+	va = pg_round_down(va);//?
+	struct hash_elem* target = hash_find(&spt->spt_hash,&page->hash_elem);
+	free(page);
+	if(target == NULL){
+		return NULL;
+	}
+	return hash_entry(target,struct page,hash_elem);
 }
 
 /* Insert PAGE into spt with validation. */
 bool
-spt_insert_page (struct supplemental_page_table *spt UNUSED,
-		struct page *page UNUSED) {
+spt_insert_page (struct supplemental_page_table *spt,struct page *page) {
 	int succ = false;
 	/* TODO: Fill this function. */
-
+	if (hash_insert(&spt->spt_hash,&page->hash_elem) == NULL){
+		succ = true;
+		return succ;
+	}
 	return succ;
 }
 
