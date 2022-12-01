@@ -21,7 +21,8 @@ static const struct page_operations anon_ops = {
 void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
-	swap_disk = disk_get(1,1);
+	
+	swap_disk = NULL;
 }
 
 /* Initialize the file mapping */
