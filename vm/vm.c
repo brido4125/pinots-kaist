@@ -60,6 +60,20 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
 		/* TODO: Insert the page into the spt. */
+		struct page *new_page = (struct page*) malloc (sizeof(struct page));
+
+		switch (type)
+		{
+		case VM_ANON:
+		init = 
+			break;
+		case VM_FILE:
+		init = 
+			break;
+		default:
+			break;
+		}
+		uninit_new(new_page,upage,init,type, aux, new_page->page_initializer);
 	}
 err:
 	return false;
