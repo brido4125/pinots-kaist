@@ -5,6 +5,7 @@
         "thread.h": "c",
         "palloc.h": "c",
         "hash.h": "c",
-        "vaddr.h": "c"
+        "vaddr.h": "c",
+        "list.h": "c"
     }
 }
