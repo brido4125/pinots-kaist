@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include "threads/palloc.h"
 #include "include/lib/kernel/hash.h"
+#include "lib/kernel/list.h"
+
 
 enum vm_type {
 	/* page not initialized */
@@ -66,6 +68,7 @@ struct page {
 struct frame {
 	void *kva;
 	struct page *page;
+	struct list_elem frame_elem;
 };
 
 /* The function table for page operations.
