@@ -225,9 +225,10 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	install_page(page->va,frame->kva,page->writable);//추후 확인 필요
-	
-	return swap_in (page, frame->kva);
+	if(install_page(page->va,frame->kva,page->writable)){
+		return swap_in (page, frame->kva);
+	}
+	return false;
 }
 
 /* Initialize new supplemental page table */
