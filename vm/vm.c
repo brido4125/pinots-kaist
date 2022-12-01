@@ -10,6 +10,9 @@
 uint64_t my_hash_function (const struct hash_elem *e, void *aux);
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux);
 
+struct list frame_table;
+struct list_elem* clock_ref;
+
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void
@@ -81,14 +84,24 @@ spt_find_page (struct supplemental_page_table *spt, void *va ) {
 }
 
 /* Insert PAGE into spt with validation. */
-bool
-spt_insert_page (struct supplemental_page_table *spt,struct page *page) {
+bool spt_insert_page (struct supplemental_page_table *spt,struct page *page) {
 	int succ = false;
 	/* TODO: Fill this function. */
 	if (hash_insert(&spt->spt_hash,&page->hash_elem) == NULL){
 		succ = true;
 		return succ;
 	}
+	return succ;
+}
+
+/* Insert PAGE into spt with validation. */
+bool spt_delete_page (struct supplemental_page_table *spt,struct page *page) {
+	int succ = false;
+	/* TODO: Fill this function. */
+	if (hash_delete(&spt->spt_hash,&page->hash_elem) == NULL){
+		return succ;
+	}
+	succ = true;
 	return succ;
 }
 
@@ -99,21 +112,43 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 }
 
 /* Get the struct frame, that will be evicted. */
+/* Project3 : Clock Algorithm */
 static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
+	struct thread* curr = thread_current();
+	for (clock_ref; clock_ref != list_end(&frame_table); list_next(clock_ref)){
+		victim = list_entry(clock_ref,struct frame,frame_elem);
+		//bit가 1인 경우
+		if(pml4_is_accessed(curr->pml4,victim->page->va)){
+			pml4_set_accessed(curr->pml4,victim->page->va,0);
+		}else{
+			return victim;
+		}
+	}
 
-	return victim;
+	struct list_elem* start = list_begin(&frame_table);
+
+	for (start; start != list_end(&frame_table); list_next(start)){
+		victim = list_entry(start,struct frame,frame_elem);
+		//bit가 1인 경우
+		if(pml4_is_accessed(curr->pml4,victim->page->va)){
+			pml4_set_accessed(curr->pml4,victim->page->va,0);
+		}else{
+			return victim;
+		}
+	}
+	return NULL;
 }
 
 /* Evict one page and return the corresponding frame.
  * Return NULL on error.*/
 static struct frame *
 vm_evict_frame (void) {
-	struct frame *victim UNUSED = vm_get_victim ();
+	struct frame *victim = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
-
+	swap_out(victim->page);
 	return NULL;
 }
 
@@ -121,14 +156,19 @@ vm_evict_frame (void) {
  * and return it. This always return valid address. That is, if the user pool
  * memory is full, this function evicts the frame to get the available memory
  * space.*/
+/* Frame_Table에 할당받은 Frame을 추가해준다.*/
 static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = (struct frame*)malloc(sizeof(frame));
 	/* TODO: Fill this function. */
 	frame->kva = palloc_get_page(PAL_USER);
 	if(frame->kva == NULL){
-		PANIC("todo");
+		/* 해당 로직은 evict한 frame을 받아오기에 이미 Frame_Table 존재해서 list_push_back()할 필요 없음 */
+		frame = vm_evict_frame();
+		frame->page = NULL;
+		return frame;
 	}
+	list_push_back(&frame_table,&frame->frame_elem);
 	frame->page = NULL;
 	//ASSERT (frame != NULL);
 	//ASSERT (frame->page == NULL);
