@@ -1,5 +1,19 @@
 {
     "files.associations": {
+<<<<<<< HEAD
+        "syscall-nr.h": "c",
+        "*.inc": "c",
+        "file.h": "c",
+        "filesys.h": "c",
+        "stdio.h": "c",
+        "flags.h": "c",
+        "intrinsic.h": "c",
+        "string.h": "c",
+        "syscall.h": "c",
+        "hash.h": "c",
+        "pte.h": "c"
+=======
         "process.h": "c"
+>>>>>>> 7eff60950d4f35b7415e3049556056f9e28b37d8
     }
 }
