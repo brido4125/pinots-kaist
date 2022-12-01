@@ -1,6 +1,10 @@
 {
     "files.associations": {
         "process.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "thread.h": "c",
+        "palloc.h": "c",
+        "hash.h": "c",
+        "vaddr.h": "c"
     }
 }
