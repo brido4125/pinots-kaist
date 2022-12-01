@@ -171,7 +171,7 @@ vm_claim_page (void *va) {
 	struct page *page = NULL;
 	/* TODO: Fill this function */
 	struct thread* curr = thread_current();
-	page = spt_find_page(curr->spt,va);
+	page = spt_find_page(&curr->spt,va);
 	return vm_do_claim_page (page);
 }
 
