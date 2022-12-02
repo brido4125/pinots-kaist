@@ -741,24 +741,27 @@ setup_stack (struct intr_frame *if_) {
 /* From here, codes will be used after project 3.
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
-
+/* lazy_load_segment 함수는 Page Fault가 발생 시 uninit_initialize() 함수에서 호출됨 */
 static bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
-	struct file *file = ((struct container *)aux)->file;
-    off_t offset = ((struct container *)aux)->offset;
-    size_t read_bytes = ((struct container *)aux)->read_bytes;
-    size_t zero_bytes = PGSIZE - read_bytes;
+	/* Project3 - Anon Page */
+	/* aux를 통해 받은 container의 값들은 해당 함수를 local 변수화 */
+	struct file* file = ((struct container*)aux)->file;
+	off_t offset = ((struct container*)aux)->offset;
+	size_t read_bytes = ((struct container*)aux)->read_bytes;
+	size_t size_for_zero = PGSIZE - read_bytes;
 
-	file_seek(file, offset);
-	if(file_read(file, page->frame->kva, read_bytes) != (int)read_bytes)
-	{
+	file_seek(file,offset);
+	if(file_read(file,page->frame->kva,read_bytes) != read_bytes){
 		palloc_free_page(page->frame->kva);
 		return false;
 	}
-	memset(page->frame->kva + read_bytes, 0, zero_bytes);
+	memset(page->frame->kva + read_bytes,0,size_for_zero);
+	file_seek(file,offset);//다시 offset 초기화
+
 	return true;
 }
 
@@ -791,15 +794,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		// void *aux = NULL;
-
-		struct container *container = (struct container *)malloc(sizeof(struct container));
+		/* Project3 - Anon Page */
+		struct container* container = (struct container*)malloc(sizeof(struct container));
 		container->file = file;
-		container->read_bytes = page_read_bytes;
-		container->offset = ofs;
+		container->page_read_bytes = page_read_bytes;
+        container->offset = ofs;
 
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, aux))
+					writable, lazy_load_segment, container))
 			return false;
 
 		/* Advance. */
