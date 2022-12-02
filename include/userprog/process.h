@@ -11,5 +11,12 @@ void process_exit (void);
 void process_activate (struct thread *next);
 bool install_page (void *upage, void *kpage, bool writable);
 
+struct container
+{
+    struct file *file;
+    off_t offset;
+    size_t read_bytes;
+};
+
 
 #endif /* userprog/process.h */
