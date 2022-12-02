@@ -6,6 +6,7 @@
         "palloc.h": "c",
         "hash.h": "c",
         "vaddr.h": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "inspect.h": "c"
     }
 }
