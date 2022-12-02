@@ -52,6 +52,10 @@ uninit_initialize (struct page *page, void *kva) {
 	void *aux = uninit->aux;
 
 	/* TODO: You may need to fix this function. */
+	// uninit->page_initializer (page, uninit->type, kva)의 결과와
+	// (init ? init (page, aux) : true)의 결과를  -> init이 할당 되어 있으면 해당 init호출, 그렇지 않으면 true 리턴
+	// && 연산한 결과를 리턴
+	// 현재 단계에서 init은 lazy_load_segment() 함수로 설정
 	return uninit->page_initializer (page, uninit->type, kva) && (init ? init (page, aux) : true);
 }
 
