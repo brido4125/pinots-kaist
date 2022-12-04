@@ -797,7 +797,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		/* Project3 - Anon Page */
 		struct container* container = (struct container*)malloc(sizeof(struct container));
 		container->file = file;
-		container->page_read_bytes = page_read_bytes;
+		container->read_bytes = page_read_bytes;
         container->offset = ofs;
 
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
