@@ -737,7 +737,7 @@ setup_stack (struct intr_frame *if_) {
 	return success;
 }
 
-// #else
+#else
 /* From here, codes will be used after project 3.
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
@@ -797,7 +797,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		/* Project3 - Anon Page */
 		struct container* container = (struct container*)malloc(sizeof(struct container));
 		container->file = file;
-		container->read_bytes = page_read_bytes;
+		container->page_read_bytes = page_read_bytes;
         container->offset = ofs;
 
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
@@ -808,7 +808,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
-		ofs += page_read_bytes;
 	}
 	return true;
 }
@@ -823,7 +822,6 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-
 
 	return success;
 }
