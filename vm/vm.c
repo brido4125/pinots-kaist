@@ -51,6 +51,7 @@ static struct frame *vm_evict_frame (void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
+//  전달된 vm_type에 따라 적절한 initializer를 가져와서 uninit_new를 호출하는 역할이다.
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
@@ -67,8 +68,20 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Insert the page into the spt. */
 		struct page* new_page = (struct page*)malloc(sizeof(struct page));
 
+		// uninit.h 참조
+		/* Initiate the struct page and maps the pa to the va */
 		typedef bool (*page_initializer) (struct page *, enum vm_type, void *kva);
-		page_initializer new_initializer;
+		page_initializer new_initializer = NULL;
+
+		//anon.h 참조
+		// initailizer의 정의를 위에서 정의
+		// bool anon_initializer (struct page *page, enum vm_type type, void *kva); --> anon_initailizer로 표현 가능
+
+		//file.h 참조
+		// initailizer의 정의를 위에서 정의
+		// bool file_backed_initializer (struct page *page, enum vm_type type, void *kva); --> file_backed_initializer로 표현가능
+
+		// vm_type에 따라 다른 initializer호출
 		switch (VM_TYPE(type))
 		{
 		case VM_ANON:
@@ -81,9 +94,12 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 			break;
 		}
 		uninit_new(new_page,upage,init,type,aux,new_initializer);
+
 		new_page->writable = writable;
+
 		return spt_insert_page(spt,new_page);
 	}
+	// vm_alloc_page_with_initializer는 무조건 uninit type의 page를 만든다. 그 후에 uninit_new에서 받아온 type으로 이 uninit type이 어떤 type으로 변할지와 같은 정보들을 page 구조체에 채워준다.
 err:
 	return false;
 }
