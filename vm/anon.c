@@ -28,12 +28,14 @@ vm_anon_init (void) {
 }
 
 /* Initialize the file mapping */
+// anon_initializer는 프로세스가 uninit page에 접근해서 page fault가 일어나면, page fault handler에 의해 호출되는 함수다.
+
 bool
 anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	struct uninit_page* uninit_page = &page->uninit;
 	memset(uninit_page,0,sizeof(struct uninit_page));
 	/* Set up the handler */
-	page->operations = &anon_ops;
+	page->operations = &anon_ops; // operations를 anon-ops로 지정
 
 	struct anon_page *anon_page = &page->anon;
 	anon_page->swap_sector = -1;
