@@ -213,7 +213,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-
+	page = spt_find_page(spt,addr);
 	return vm_do_claim_page (page);
 }
 
@@ -276,8 +276,20 @@ bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux
 
 /* Copy supplemental page table from src to dst */
 bool
-supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
-		struct supplemental_page_table *src UNUSED) {
+supplemental_page_table_copy (struct supplemental_page_table *dst ,struct supplemental_page_table *src) {
+	src->spt_hash.bucket_cnt = dst->spt_hash.bucket_cnt;
+	/* buckets list 복사 */
+	struct hash_iterator i;
+
+   hash_first (&i, &dst->spt_hash);
+   while (hash_next (&i)){
+	/* parent page */
+	struct page* page = hash_entry (hash_cur(&i), struct page, hash_elem);
+	enum vm_type parent_type = page->operations->type;
+	if (parent_type == VM_UNINIT){
+
+	}
+   }
 }
 
 /* Free the resource hold by the supplemental page table */
