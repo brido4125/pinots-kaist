@@ -8,6 +8,7 @@
         "vaddr.h": "c",
         "list.h": "c",
         "inspect.h": "c",
-        "bitmap.h": "c"
+        "bitmap.h": "c",
+        "loader.h": "c"
     }
 }
