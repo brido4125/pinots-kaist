@@ -213,6 +213,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
+	spt_find_page(, page->va)
 
 	return vm_do_claim_page (page);
 }
@@ -278,6 +279,7 @@ bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+			
 }
 
 /* Free the resource hold by the supplemental page table */
