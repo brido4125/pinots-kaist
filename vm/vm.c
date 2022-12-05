@@ -92,9 +92,8 @@ err:
 struct page *
 spt_find_page (struct supplemental_page_table *spt, void *va ) {
 	/* TODO: Fill this function. */
-	struct page* page = (struct page*)malloc(sizeof(page));		
-	
-	page->va = pg_round_down(va);//?
+	struct page* page = (struct page*)malloc(sizeof(page));
+	page->va = pg_round_down(va);
 	struct hash_elem* target = hash_find(&spt->spt_hash,&page->hash_elem);
 	free(page);
 	if(target == NULL){
@@ -228,16 +227,13 @@ vm_dealloc_page (struct page *page) {
 /* Claim the page that allocate on VA. */
 bool
 vm_claim_page (void *va) {
-	struct page *page = NULL;
+	struct page *page;
 	/* TODO: Fill this function */
 	struct thread* curr = thread_current();
 	page = spt_find_page(&curr->spt,va);
-
-	if(page == NULL)
-	{
+	if (page == NULL){
 		return false;
 	}
-
 	return vm_do_claim_page (page);
 }
 
@@ -268,16 +264,13 @@ uint64_t my_hash_function (const struct hash_elem *e, void *aux){
 	return hash_bytes(&page->va,sizeof(page->va));
 }
 
+
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux){
 	bool flag = false;
 	/* Returns true if A is less than B, or false if A is greater than or equal to B */
 	struct page* A = hash_entry(a,struct page,hash_elem);
 	struct page* B = hash_entry(b,struct page,hash_elem);
-	if (A->va>B->va){
-		return !flag;
-	}
-	else 
-		return flag;
+	return A->va < B->va;
 }
 
 /* Copy supplemental page table from src to dst */
