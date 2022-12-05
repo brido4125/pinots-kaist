@@ -10,8 +10,8 @@
 uint64_t my_hash_function (const struct hash_elem *e, void *aux);
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux);
 
-struct list frame_table;
-struct list_elem* clock_ref;
+struct list frame_table; // project3 vm_get_frame()
+struct list_elem* clock_ref; // project3 vm_get_victim()
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -89,13 +89,18 @@ err:
 }
 
 /* Find VA from spt and return page. On error, return NULL. */
+// SPT 에서 va에 해당하는 struct page를 찾는다 실패시 NULL 반환
+// 굳이 dummy page를 생성하는 이유는 dummy page를 생성하면 거기에 hash_elem이 있고, 이걸 통해서 우리가 받아온 va(offset을 지운)로 접근하기 위해서이다.
 struct page *
 spt_find_page (struct supplemental_page_table *spt, void *va ) {
+	// project3
 	/* TODO: Fill this function. */
-	struct page* page = (struct page*)malloc(sizeof(page));		
-	page->va = pg_round_down(va);
+	struct page* page = (struct page*)malloc(sizeof(page));	// dummy page 생성
+	page->va = pg_round_down(va); // va가 가리키는 가상 page의 시작 포인트 (offset이 0으로 설정된 va)반환
 	struct hash_elem* target = hash_find(&spt->spt_hash,&page->hash_elem);
+	// SPT에서 hash_elem과 같은 요소를 검색해서 발견하면 elem 반환 아니면 NULL 반환
 	free(page);
+
 	if(target == NULL){
 		return NULL;
 	}
@@ -103,6 +108,7 @@ spt_find_page (struct supplemental_page_table *spt, void *va ) {
 }
 
 /* Insert PAGE into spt with validation. */
+// spt에 va가 있는지 없는지 check
 bool spt_insert_page (struct supplemental_page_table *spt,struct page *page) {
 	int succ = false;
 	/* TODO: Fill this function. */
@@ -113,7 +119,8 @@ bool spt_insert_page (struct supplemental_page_table *spt,struct page *page) {
 	return succ;
 }
 
-/* Insert PAGE into spt with validation. */
+/* Delete PAGE into spt with validation. */
+// spt에 va가 있는지 없는지 check
 bool spt_delete_page (struct supplemental_page_table *spt,struct page *page) {
 	int succ = false;
 	/* TODO: Fill this function. */
@@ -132,6 +139,11 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 
 /* Get the struct frame, that will be evicted. */
 /* Project3 : Clock Algorithm */
+//page table entry가 최근에 액세스된 경우(즉, pml4_is_accessed에서 true가 반환되면) pml4_set_accessed 함수에서 accessed bit을 0으로 설정한다. 그리고 만약에 pml4에 page table entry가 없는 경우 (pml4_is_accessed에서 false 반환) 바로 그 frame이 victim(쫓겨날 대상)이 된다. 그리고 그 대상이 start에 기록된다.
+
+// 그리고 list의 맨 처음(list_begin)부터 한번 더 for문을 돌리면서 victim을 찾아낸다.
+
+// 이 victim을 찾는 과정을 여러가지로 구현할 수 있지만 여기서는 clock algorithm으로 구현했다.
 static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
@@ -178,17 +190,17 @@ vm_evict_frame (void) {
 /* Frame_Table에 할당받은 Frame을 추가해준다.*/
 static struct frame *
 vm_get_frame (void) {
-	struct frame *frame = (struct frame*)malloc(sizeof(struct frame));
+	struct frame *frame = (struct frame*)malloc(sizeof(struct frame)); // user_pool 에서 frame 가져오고, kva return해서 frame에 넣어준다.
 	/* TODO: Fill this function. */
 	frame->kva = palloc_get_page(PAL_USER);
-	if(frame->kva == NULL){
+	if(frame->kva == NULL){ //frame에서 가용한 page가 없다면
 		/* 해당 로직은 evict한 frame을 받아오기에 이미 Frame_Table 존재해서 list_push_back()할 필요 없음 */
-		frame = vm_evict_frame();
+		frame = vm_evict_frame(); // 쫓아냄
 		frame->page = NULL;
 		return frame;
 	}
-	list_push_back(&frame_table,&frame->frame_elem);
-	frame->page = NULL;
+	list_push_back(&frame_table,&frame->frame_elem); 
+	frame->page = NULL; //새 frame을 가져왔으니 page의 멤버를 초기화
 	//ASSERT (frame != NULL);
 	//ASSERT (frame->page == NULL);
 	return frame;
@@ -225,6 +237,10 @@ vm_dealloc_page (struct page *page) {
 }
 
 /* Claim the page that allocate on VA. */
+// page에 va를 할당하도록 claim을 하는 것이다.
+// claim이란 유저 virtual memory 공간의 page를 physical memory에 할당하는 것이다.
+// 함수의 로직을 살펴보면 va를 가진 page를 spt에서 찾아서 그 page에 대해서 vm_do_claim_page(page)를 진행한다.
+
 bool
 vm_claim_page (void *va) {
 	struct page *page;
@@ -247,6 +263,8 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	//  user virtual address(UPAGE)에서 kernel virtual address(KPAGE)로의 mapping을 page table에 추가해주는 함수다(pml4 mapping 진행).
+	// 인자로 받는 writable이 true면 user process가 page를 수정할 수 있고, 그렇지 않으면 read-only이다. KPAGE는 user pool에서 가져온 page여야 한다. UPAGE가 이미 mapping되었거나, 메모리 할당이 실패하면 false를 반환한다. 성공하면 true를 반환한다. 성공시에 swap_in()함수가 실행된다.
 	if(install_page(page->va,frame->kva,page->writable)){
 		return swap_in (page, frame->kva);
 	}
@@ -258,10 +276,12 @@ void
 supplemental_page_table_init (struct supplemental_page_table *spt) {
 	hash_init(&spt->spt_hash,my_hash_function,my_less_func,NULL);
 }
-
+//project3
+// page에 대한 hash value를 return 해준다.(hash값을 구해주는 함수의 pointer)
+// key = va, value = hash_elem
 uint64_t my_hash_function (const struct hash_elem *e, void *aux){
 	struct page* page = hash_entry(e,struct page,hash_elem);
-	return hash_bytes(&page->va,sizeof(page->va));
+	return hash_bytes(&page->va,sizeof(page->va)); //va에서 시작하는 hash를 반환
 }
 
 
@@ -276,19 +296,19 @@ bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux
 /* Copy supplemental page table from src to dst */
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst ,struct supplemental_page_table *src) {
-// 	src->spt_hash.bucket_cnt = dst->spt_hash.bucket_cnt;
-// 	/* buckets list 복사 */
-// 	struct hash_iterator i;
+	src->spt_hash.bucket_cnt = dst->spt_hash.bucket_cnt;
+	/* buckets list 복사 */
+	struct hash_iterator i;
 
-//    hash_first (&i, &dst->spt_hash);
-//    while (hash_next (&i)){
-// 	/* parent page */
-// 	struct page* page = hash_entry (hash_cur(&i), struct page, hash_elem);
-// 	enum vm_type parent_type = page->operations->type;
-// 	if (parent_type == VM_UNINIT){
+   hash_first (&i, &dst->spt_hash);
+   while (hash_next (&i)){
+	/* parent page */
+	struct page* page = hash_entry (hash_cur(&i), struct page, hash_elem);
+	enum vm_type parent_type = page->operations->type;
+	if (parent_type == VM_UNINIT){
 
-// 	}
-//    }
+	}
+   }
 }
 
 /* Free the resource hold by the supplemental page table */
