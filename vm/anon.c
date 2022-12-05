@@ -34,7 +34,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	memset(uninit_page,0,sizeof(struct uninit_page));
 	/* Set up the handler */
 	page->operations = &anon_ops;
-
+	
 	struct anon_page *anon_page = &page->anon;
 	anon_page->swap_sector = -1;
 	

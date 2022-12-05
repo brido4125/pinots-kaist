@@ -1,5 +1,14 @@
 {
     "files.associations": {
-        "process.h": "c"
+        "process.h": "c",
+        "stdbool.h": "c",
+        "thread.h": "c",
+        "palloc.h": "c",
+        "hash.h": "c",
+        "vaddr.h": "c",
+        "list.h": "c",
+        "inspect.h": "c",
+        "bitmap.h": "c",
+        "loader.h": "c"
     }
 }
