@@ -22,9 +22,9 @@ static const struct page_operations anon_ops = {
 void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
-	swap_disk = disk_get(1,1);
-	bitcnt = disk_size(swap_disk)/SECTORS_IN_PAGE; // #ifdef Q. disk size decided by swap-size option? 
-    swap_table = bitmap_create(bitcnt);
+	swap_disk = NULL;
+	//bitcnt = disk_size(swap_disk)/SECTORS_IN_PAGE; // #ifdef Q. disk size decided by swap-size option? 
+    //swap_table = bitmap_create(bitcnt);
 }
 
 /* Initialize the file mapping */
@@ -34,7 +34,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	memset(uninit_page,0,sizeof(struct uninit_page));
 	/* Set up the handler */
 	page->operations = &anon_ops;
-	
+
 	struct anon_page *anon_page = &page->anon;
 	anon_page->swap_sector = -1;
 	

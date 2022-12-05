@@ -797,7 +797,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		/* Project3 - Anon Page */
 		struct container* container = (struct container*)malloc(sizeof(struct container));
 		container->file = file;
-		container->page_read_bytes = page_read_bytes;
+		container->read_bytes = page_read_bytes;
         container->offset = ofs;
 
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
@@ -822,6 +822,13 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
+		success = vm_claim_page(stack_bottom);
+		if (success){
+			if_->rsp = USER_STACK;
+		}
+	}
 
 	return success;
 }
