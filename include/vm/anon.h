@@ -6,7 +6,7 @@ struct page;
 enum vm_type;
 
 struct anon_page {
-    struct page anon_p;
+    //struct page anon_p;
     int swap_sector; // swap된 내용이 저장되는 sector
 };
 
