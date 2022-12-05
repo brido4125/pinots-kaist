@@ -138,7 +138,7 @@ vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
 	struct thread* curr = thread_current();
-	for (clock_ref; clock_ref != list_end(&frame_table); list_next(clock_ref)){
+	for (clock_ref; clock_ref != list_end(&frame_table); clock_ref = list_next(clock_ref)){
 		victim = list_entry(clock_ref,struct frame,frame_elem);
 		//bit가 1인 경우
 		if(pml4_is_accessed(curr->pml4,victim->page->va)){
@@ -150,7 +150,7 @@ vm_get_victim (void) {
 
 	struct list_elem* start = list_begin(&frame_table);
 
-	for (start; start != list_end(&frame_table); list_next(start)){
+	for (start; start != list_end(&frame_table); start = list_next(start)){
 		victim = list_entry(start,struct frame,frame_elem);
 		//bit가 1인 경우
 		if(pml4_is_accessed(curr->pml4,victim->page->va)){
