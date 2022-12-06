@@ -328,7 +328,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	 * TODO: writeback all the modified contents to the storage. */
 }
 
-struct page* hash_copy_func(struct hash_elem* elem)
+struct page* hash_copy_func(struct hash_elem* elem, void *aux)
 {
 	struct page *page = hash_entry(elem, struct page, hash_elem);
 	struct page *copy_page = NULL;
