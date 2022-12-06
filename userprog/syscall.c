@@ -13,7 +13,7 @@
 #include "threads/synch.h"
 #include "lib/string.h"
 #include "threads/palloc.h"
-
+#include "vm/vm.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -163,13 +163,11 @@ int dup2(int oldfd, int newfd) {
 // 	}
 // }
 /* Project3  */
-void check_address(void* addr){
-	if(is_kernel_vaddr(addr)){
+void check_address(void *addr) {
+    if((!is_user_vaddr(addr)) || spt_find_page(&thread_current()->spt, addr) == NULL || (addr == NULL)){
         exit(-1);
-    }
-    return spt_find_page(&thread_current()->spt,addr);
+	}
 }
-
 
 /* Project2-3 System Call */
 void halt(void){

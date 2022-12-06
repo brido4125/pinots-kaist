@@ -5,7 +5,7 @@
 #include "include/lib/kernel/hash.h"
 #include "lib/kernel/list.h"
 #include "hash.h" // project3
-#include "userprog/process.h"
+// #include "userprog/process.h"
 
 enum vm_type {
 	/* page not initialized */
@@ -118,5 +118,6 @@ bool vm_alloc_page_with_initializer (enum vm_type type, void *upage,
 void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
+void spt_dealloc(struct hash_elem *e, void *aux);
 
 #endif  /* VM_VM_H */
