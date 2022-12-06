@@ -5,7 +5,7 @@
 #include "include/lib/kernel/hash.h"
 #include "lib/kernel/list.h"
 #include "hash.h" // project3
-#include "userprog/process.h"
+//#include "userprog/process.h"
 
 enum vm_type {
 	/* page not initialized */

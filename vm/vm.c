@@ -9,6 +9,7 @@
 
 uint64_t my_hash_function (const struct hash_elem *e, void *aux);
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux);
+void hash_copy_func(struct hash_elem* elem, void *aux);
 
 struct list frame_table; // project3 vm_get_frame()
 struct list_elem* clock_ref; // project3 vm_get_victim()
@@ -338,7 +339,7 @@ void hash_copy_func(struct hash_elem* elem, void *aux)
 		vm_do_claim_page(copy_page);
 	} else {
 		// uninit page를 할당하고 claim을 바로 한다.
-		vm_alloc_page_with_initializer(page->uninit.type, copy_page->va, copy_page->writable, lazy_load_segment, page->uninit.aux);
+		vm_alloc_page_with_initializer(page->uninit.type, copy_page->va, copy_page->writable, page->uninit.init, page->uninit.aux);
 	}
 	memcpy(copy_page, page, sizeof(page));
 
