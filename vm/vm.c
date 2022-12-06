@@ -227,6 +227,9 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
+	struct page* anon_page = vm_alloc_page(VM_ANON, addr, 1);
+	vm_claim_page(addr);
+	thread_current()->stack_bottom -= PGSIZE;
 }
 
 /* Handle the fault on write_protected page */
@@ -235,18 +238,40 @@ vm_handle_wp (struct page *page UNUSED) {
 }
 
 /* Return true on success */
+// 1. 유저 -> 커널 transition시 thread 내 구조체에 유저 스택 저장
+// 2. fault 발생 주소 확인 (유저스택에 있는지 in Pinots 1MB)
+//  1) user stack에서 밑으로 1MB 사이에 있는지 확인 [1MB = (1<<20)]
+//  2) push 시 8byte씩만 주소값이 내려감 write시 8byte아래로 주소값이 들어가면 정상적이지 않다. (user_stack영역안에 있더라도)
+// 3. 확인되면 vm_stack_growth 호출
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
-
+	
 	check_address(addr);
-	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
-	struct page *page = NULL;
 
-	/* TODO: Validate the fault */
-	/* TODO: Your code goes here */
-	page = spt_find_page(spt,addr);
-	return vm_do_claim_page (page);
+	if(is_kernel_vaddr(addr)){
+		return false;
+	}
+
+	// thread 구조체 내의 rsp_stack을 설정 
+	struct thread* cur = thread_current();
+	void *rsp_stack = is_kernel_vaddr(f->rsp) ? cur->rsp_stack : f->rsp;
+
+	if (rsp_stack-8 <= addr  && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){
+		vm_stack_growth(addr);
+		return true;
+	}  
+	
+	return false;
+
+	
+	// struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
+	// struct page *page = NULL;
+
+	// /* TODO: Validate the fault */
+	// /* TODO: Your code goes here */
+	// page = spt_find_page(spt,addr);
+	// return vm_do_claim_page (page);
 }
 
 /* Free the page.
