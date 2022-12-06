@@ -10,6 +10,7 @@
 uint64_t my_hash_function (const struct hash_elem *e, void *aux);
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux);
 void hash_copy_func(struct hash_elem* elem, void *aux);
+void spt_dealloc(struct hash_elem *e, void *aux);
 
 struct list frame_table; // project3 vm_get_frame()
 struct list_elem* clock_ref; // project3 vm_get_victim()
@@ -351,4 +352,16 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	struct hash_iterator i;
+    hash_first (&i, &spt->spt_hash);
+	while (hash_next(&i))
+	{
+		hash_destroy(&spt->spt_hash,spt_dealloc);
+	}	
+}
+
+void spt_dealloc(struct hash_elem *e, void *aux){
+	struct page *page = hash_entry (e, struct page, hash_elem);
+	//destroy(page);
+	free(page);
 }
