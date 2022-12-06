@@ -266,6 +266,9 @@ process_exec (void *f_name) {
 
 	/* We first kill the current context */
 	process_cleanup ();
+	// VM
+	struct thread *curr = thread_current();
+	supplemental_page_table_init(&curr->spt);
 
 	/* And then load the binary */
 	success = load (copy, &_if);

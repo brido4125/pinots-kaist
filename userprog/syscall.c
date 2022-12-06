@@ -156,12 +156,20 @@ int dup2(int oldfd, int newfd) {
 }
 
 /* Project2-2 User Memory Access */
+// void check_address(void* addr){
+// 	struct thread* curr = thread_current();
+// 	if(!is_user_vaddr(addr) || addr == NULL || pml4_get_page(curr->pml4,addr) == NULL){
+// 		exit(-1);
+// 	}
+// }
+/* Project3  */
 void check_address(void* addr){
-	struct thread* curr = thread_current();
-	if(!is_user_vaddr(addr) || addr == NULL || pml4_get_page(curr->pml4,addr) == NULL){
-		exit(-1);
-	}
+	if(is_kernel_vaddr(addr)){
+        exit(-1);
+    }
+    return spt_find_page(&thread_current()->spt,addr);
 }
+
 
 /* Project2-3 System Call */
 void halt(void){

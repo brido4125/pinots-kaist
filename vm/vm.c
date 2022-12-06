@@ -238,8 +238,11 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
+
+	check_address(addr);
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
 	struct page *page = NULL;
+
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	page = spt_find_page(spt,addr);
@@ -352,16 +355,11 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
-	struct hash_iterator i;
-    hash_first (&i, &spt->spt_hash);
-	while (hash_next(&i))
-	{
-		hash_destroy(&spt->spt_hash,spt_dealloc);
-	}	
+
+	hash_destroy(&spt->spt_hash,spt_dealloc);
 }
 
 void spt_dealloc(struct hash_elem *e, void *aux){
 	struct page *page = hash_entry (e, struct page, hash_elem);
-	//destroy(page);
 	free(page);
 }
