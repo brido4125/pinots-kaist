@@ -9,6 +9,7 @@
         "list.h": "c",
         "inspect.h": "c",
         "bitmap.h": "c",
-        "loader.h": "c"
+        "loader.h": "c",
+        "vm.h": "c"
     }
 }
