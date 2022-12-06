@@ -741,7 +741,11 @@ setup_stack (struct intr_frame *if_) {
 /* From here, codes will be used after project 3.
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
-/* lazy_load_segment 함수는 Page Fault가 발생 시 uninit_initialize() 함수에서 호출됨 */
+
+// lazy_load_segment 는 vm_alloc_page_with_initializer의 4번째 argument로 제공된다(load_segment 안에서). 이 함수는 executable’s page의 initializer이며 page fault 발생시에 실행된다. 이 함수는 page struct와 aux를 arguments로 받는다. aux는 load_segment에서 설정하는 정보다. 당신은 이 정보를 사용하여 segment를 읽을 file을 찾아 segment를 메모리로 읽어야(read) 한다.
+
+// 성공하면 true를 반환하고 메모리 할당 오류 혹은 disk 읽기 오류가 발생하면 false를 반환한다.
+
 static bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
@@ -755,11 +759,14 @@ lazy_load_segment (struct page *page, void *aux) {
 	size_t size_for_zero = PGSIZE - read_bytes;
 
 	file_seek(file,offset);
+	//file_read(file,buffer,size)
 	if(file_read(file,page->frame->kva,read_bytes) != (int)read_bytes){
 		palloc_free_page(page->frame->kva);
 		return false;
 	}
+	// 나머지 0을 채우는 용도
 	memset(page->frame->kva + read_bytes,0,size_for_zero);
+
 	file_seek(file,offset);//다시 offset 초기화
 
 	return true;
@@ -779,6 +786,10 @@ lazy_load_segment (struct page *page, void *aux) {
  *
  * Return true if successful, false if a memory allocation error
  * or disk read error occurs. */
+
+// loop를 돌 때마다 vm_alloc_page_with_initializer를 호출하여 보류중인 페이지 개체를 생성한다. page fault가 발생하면 segment가 file에서 실제로 load된다.
+
+// stack 할당을 새로운 memory management system에 맞추려면 setup_stack( in userprog/process.c)을 조정해야 한다
 static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
@@ -814,6 +825,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
+
+// stack은 disk에서 file을 읽어올 필요가 없으니까 lazy load 할 필요가 없다.(그래서 init에 NULL을 넣어주나 보다)
+
+// anon page로 만들 uninit page를 stack_bottom에서 위로 1page만큼 만든다. 이 때 type에 VM_MARKER_0 flag를 추가함으로써 이 page가 stack임을 표시
+
+// stack_bottom을 thread.h에 추가해준다.
 static bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
@@ -823,6 +840,10 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+	
+// vm_alloc_page_with_initializer의 wrapper 함수(정의되어 있음)
+// #define vm_alloc_page(type, upage, writable) \
+//     vm_alloc_page_with_initializer ((type), (upage), (writable), NULL, NULL)
 
   if(vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
         success = vm_claim_page(stack_bottom);
