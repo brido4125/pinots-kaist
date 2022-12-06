@@ -316,7 +316,7 @@ bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux
 // uninit 페이지를 할당하고 즉시 요청해야 합니다.
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst ,struct supplemental_page_table *src) {
-	hash_apply(&src->spt_hash, hash_copy_func());
+	hash_apply(&src->spt_hash, hash_copy_func);
 	
 	return ;
 }
@@ -328,20 +328,20 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	 * TODO: writeback all the modified contents to the storage. */
 }
 
-struct page* hash_copy_func(struct hash_elem* elem, void *aux)
+void hash_copy_func(struct hash_elem* elem, void *aux)
 {
 	struct page *page = hash_entry(elem, struct page, hash_elem);
-	struct page *copy_page = NULL;
+	struct page *copy_page = (struct page*)malloc(sizeof(struct page));
 	
 	if (page->operations->type == VM_ANON) {
-		vm_alloc_page(page_get_type(page), );
+		vm_alloc_page(VM_ANON,copy_page->va,copy_page->writable);
+		vm_do_claim_page(copy_page);
 	} else {
 		// uninit page를 할당하고 claim을 바로 한다.
-		vm_alloc_page_with_initializer(VM_ANON, copy_page, copy_page->writable, lazy_load_segment, page->uninit.aux);
-		vm_do_claim_page(copy_page);
-		memcpy(copy_page, page, sizeof(page));
+		vm_alloc_page_with_initializer(page->uninit.type, copy_page->va, copy_page->writable, lazy_load_segment, page->uninit.aux);
 	}
-	return copy_page;
+	memcpy(copy_page, page, sizeof(page));
+
 }
 // 1. page -> malloc
 // 2. 물리 frame 할당
