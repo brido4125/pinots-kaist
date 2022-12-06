@@ -315,11 +315,35 @@ bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux
 // 이는 자식이 부모의 실행 컨텍스트를 상속해야 할 때 사용됩니다(예: fork()). 
 // src의 추가 페이지 테이블에 있는 각 페이지를 반복하고 dst의 추가 페이지 테이블에 있는 항목의 정확한 복사본을 만듭니다. 
 // uninit 페이지를 할당하고 즉시 요청해야 합니다.
-bool
-supplemental_page_table_copy (struct supplemental_page_table *dst ,struct supplemental_page_table *src) {
-	hash_apply(&src->spt_hash, hash_copy_func);
-	
-	return ;
+
+bool supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct supplemental_page_table *src UNUSED) {
+    struct hash_iterator i;
+    hash_first (&i, &src->spt_hash);
+    while (hash_next (&i)) {	// src의 각각의 페이지를 반복문을 통해 복사
+        struct page *parent_page = hash_entry (hash_cur (&i), struct page, hash_elem);   // 현재 해시 테이블의 element 리턴
+        enum vm_type type = page_get_type(parent_page);		// 부모 페이지의 type
+        void *upage = parent_page->va;						// 부모 페이지의 가상 주소
+        bool writable = parent_page->writable;				// 부모 페이지의 쓰기 가능 여부
+        vm_initializer *init = parent_page->uninit.init;	// 부모의 초기화되지 않은 페이지들 할당 위해 
+        void* aux = parent_page->uninit.aux;
+
+        if(parent_page->operations->type == VM_UNINIT) {	// 부모 타입이 uninit인 경우
+            if(!vm_alloc_page_with_initializer(type, upage, writable, init, aux)) // 부모의 타입, 부모의 페이지 va, 부모의 writable, 부모의 uninit.init, 부모의 aux (container)
+                return false;
+        }
+        else {
+            if(!vm_alloc_page(type, upage, writable))
+                return false;
+            if(!vm_claim_page(upage))
+                return false;
+        }
+
+        if (parent_page->operations->type != VM_UNINIT) {   //! UNIT이 아닌 모든 페이지(stack 포함)는 부모의 것을 memcpy
+            struct page* child_page = spt_find_page(dst, upage);
+            memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
+        }
+    }
+    return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -328,23 +352,3 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 }
-
-void hash_copy_func(struct hash_elem* elem, void *aux)
-{
-	struct page *page = hash_entry(elem, struct page, hash_elem);
-	struct page *copy_page = (struct page*)malloc(sizeof(struct page));
-	
-	if (page->operations->type == VM_ANON) {
-		vm_alloc_page(VM_ANON,copy_page->va,copy_page->writable);
-		vm_do_claim_page(copy_page);
-	} else {
-		// uninit page를 할당하고 claim을 바로 한다.
-		vm_alloc_page_with_initializer(page->uninit.type, copy_page->va, copy_page->writable, page->uninit.init, page->uninit.aux);
-	}
-	memcpy(copy_page, page, sizeof(page));
-
-}
-// 1. page -> malloc
-// 2. 물리 frame 할당
-// 3. pml4 세팅
-// 4. memcpy
