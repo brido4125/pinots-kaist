@@ -447,7 +447,7 @@ mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 	if (target==NULL){
 		return false;
 	}
-	return do_mmap(addr, length, writable, fd, offset);
+	return do_mmap(addr, length, writable, target, offset);
 }
 
 void
