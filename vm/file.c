@@ -104,15 +104,15 @@ void do_munmap (void *addr) {
 	while(true){
 		struct thread *curr = thread_current();
 		struct page *find_page = spt_find_page(&curr->spt, addr);
-		struct frame *find_frame =find_page->frame;
+		// struct frame *find_frame =find_page->frame;
 		
 		if (find_page == NULL) {
     		return NULL;
     	}
 
 		// 연결 해제
-		find_page->frame = NULL;
-		find_frame->page = NULL;
+		// find_page->frame = NULL;
+		// find_frame->page = NULL;
 
 		struct container* container = (struct container*)find_page->uninit.aux;
 		// 페이지의 dirty bit이 1이면 true를, 0이면 false를 리턴한다.
