@@ -23,8 +23,8 @@ void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
 	swap_disk = NULL;
-	//bitcnt = disk_size(swap_disk)/SECTORS_IN_PAGE; // #ifdef Q. disk size decided by swap-size option? 
-    //swap_table = bitmap_create(bitcnt);
+	// bitcnt = disk_size(swap_disk)/SECTORS_IN_PAGE; // #ifdef Q. disk size decided by swap-size option? 
+    // swap_table = bitmap_create(bitcnt);
 }
 
 /* Initialize the file mapping */
