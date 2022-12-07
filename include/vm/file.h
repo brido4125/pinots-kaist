@@ -3,7 +3,9 @@
 #include "filesys/file.h"
 #include "vm/vm.h"
 #include "userprog/process.h"
-struct page;
+#include "threads/mmu.h"
+
+struct paage;
 enum vm_type;
 
 struct file_page {
