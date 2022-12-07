@@ -36,7 +36,8 @@ unsigned tell (int fd);
 int add_file(struct file *file);
 int dup2(int oldfd, int newfd);
 void remove_file(int fd);
-
+void * mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 
 
 /* System call.
@@ -450,7 +451,13 @@ mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 	return do_mmap(addr, length, writable, target, offset);
 }
 
+//  유저 가상 페이지의 변경 사항을 디스크 파일에 업데이트한 뒤, 매핑 정보를 지운다. 여기서 중요한 점은 페이지를 지우는 게 아니라 present bit을 0으로 만들어준다는 점이다. 따라서 munmap() 함수는 정확히는 지정된 주소 범위 addr에 대한 매핑을 해제하는 함수
+
+// Dirty bit은 해당 페이지가 변경되었는지 여부를 저장하는 비트이다. 페이지가 변경될 때마다 이 비트는 1이 되고, 디스크에 변경 내용을 기록하고 나면 해당 페이지의 dirty bit는 다시 0으로 초기화해야 한다. 즉, 변경하는 동안에 dirty bit가 1이 된다.
+
+// Present Bit
+// 해당 페이지가 물리 메모리에 매핑되어 있는지 아니면 swap out되었는지를 가리킨다. Swap in/out에서 더 다룰 것. present bit이 1이면 해당 페이지가 물리 메모리 어딘가에 매핑되어 있다는 말이며 0이면 디스크에 내려가(swap out)있다는 말이다. 이렇게 present bit이 0인, 물리 메모리에 존재하지 않는 페이지에 접근하는 과정이 file-backed page에서의 page fault이다.
 void
 munmap (void *addr) {
-
+	do_munmap(addr);
 }
