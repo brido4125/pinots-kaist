@@ -2,7 +2,7 @@
 #define VM_FILE_H
 #include "filesys/file.h"
 #include "vm/vm.h"
-
+#include "userprog/process.h"
 struct page;
 enum vm_type;
 
