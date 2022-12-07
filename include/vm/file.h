@@ -2,7 +2,6 @@
 #define VM_FILE_H
 #include "filesys/file.h"
 #include "vm/vm.h"
-#include "userprog/process.h"
 #include "threads/mmu.h"
 
 struct paage;

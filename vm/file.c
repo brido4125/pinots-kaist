@@ -1,10 +1,14 @@
 /* file.c: Implementation of memory backed file object (mmaped object). */
 
 #include "vm/vm.h"
+#include "userprog/process.h"
+
 
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
 static void file_backed_destroy (struct page *page);
+void do_munmap (void *addr);
+void* do_mmap (void *addr, size_t length, int writable, struct file *file, off_t offset);
 
 /* DO NOT MODIFY this struct */
 static const struct page_operations file_ops = {
@@ -56,8 +60,9 @@ file_backed_destroy (struct page *page) {
 // 1) load_segment()가 파일의 정보를 담은 uninit 타입 페이지를 만들 때 파일 타입을 VM_FILE로 선언해주는 것과
 // 2) 매핑이 끝난 후 연속된 유저 페이지 나열의 첫 주소를 리턴한다는 점이 있다.
 
-void * 
-do_mmap (void *addr, size_t length, int writable, struct file *file, off_t offset) {
+
+
+void* do_mmap (void *addr, size_t length, int writable, struct file *file, off_t offset) {
 	//size_t length = 사용자가 요청한 길이		
 	struct file * get_file = file_reopen(file); // 기존에 열린파일이면 close되면 중단될 수 있다.
 	void *start_addr  = addr; // 시작 주소를 return하기 위해 저장
@@ -94,10 +99,8 @@ do_mmap (void *addr, size_t length, int writable, struct file *file, off_t offse
 
 /* Do the munmap */
 // memory unmapping을 실행한다. 즉, 페이지에 연결되어 있는 물리 프레임과의 연결을 끊어준다. 유저 가상 메모리의 시작 주소 addr부터 연속으로 나열된 페이지 모두를 매핑 해제한다.
-
 // 이때 페이지의 Dirty bit이 1인 페이지는 매핑 해제 전에 변경 사항을 디스크 파일에 업데이트해줘야 한다. 이를 위해 페이지의 container 구조체에서 연결된 파일에 대한 정보를 가져온다.
-void
-do_munmap (void *addr) {
+void do_munmap (void *addr) {
 	while(true){
 		struct thread *curr = thread_current();
 		struct page *find_page = spt_find_page(&curr->spt, addr);
@@ -111,7 +114,7 @@ do_munmap (void *addr) {
 		find_page->frame = NULL;
 		find_frame->page = NULL;
 
-		struct container * container = (struct container*)find_page->uninit.aux;
+		struct container* container = (struct container*)find_page->uninit.aux;
 		// 페이지의 dirty bit이 1이면 true를, 0이면 false를 리턴한다.
 		if (pml4_is_dirty(&curr->pml4, find_page->va) == true){
 			// 물리 프레임에 변경된 데이터를 다시 디스크 파일에 업데이트 buffer에 있는 데이터를 size만큼, file의 file_ofs부터 써준다.

@@ -27,6 +27,7 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 void argument_stack(char ** parse, int count, struct intr_frame* if_);
+bool lazy_load_segment (struct page *page, void *aux);
 
 /* General process initializer for initd and other process. */
 static void
@@ -749,7 +750,7 @@ setup_stack (struct intr_frame *if_) {
 
 // 성공하면 true를 반환하고 메모리 할당 오류 혹은 disk 읽기 오류가 발생하면 false를 반환한다.
 
-static bool
+bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
