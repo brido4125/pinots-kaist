@@ -228,6 +228,7 @@ vm_get_frame (void) {
 static void
 vm_stack_growth (void *addr UNUSED) {
 	if (vm_alloc_page(VM_ANON, addr, 1)) {
+		
 		vm_claim_page(addr);
 		thread_current()->stack_bottom -= PGSIZE;
 	}
@@ -258,6 +259,8 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	// thread 구조체 내의 rsp_stack을 설정 
 	struct thread* cur = thread_current();
 	void *rsp_stack = is_kernel_vaddr(f->rsp) ? cur->rsp_stack : f->rsp;
+
+
 	if (!vm_claim_page(addr)){
 		if (rsp_stack-8 <= addr  && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){
 			vm_stack_growth(cur->stack_bottom-PGSIZE);
