@@ -456,7 +456,7 @@ mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 	}
 	// 매핑하려는 페이지가 이미 존재하는 페이지와 겹칠 때(==SPT에 존재하는 페이지일 때)
 	
-	if(spt_find_page(&thread_current()->spt,addr) != NULL){
+	if(spt_find_page(&thread_current()->spt,addr)){
 		return NULL;
 	}
 	// 콘솔 입출력과 연관된 파일 디스크립터 값(0: STDIN, 1:STDOUT)일 때
