@@ -2,8 +2,10 @@
 #define VM_ANON_H
 #include "vm/vm.h"
 #include "lib/kernel/bitmap.h"
-#include "devices/disk.h"
 #include "threads/vaddr.h"
+
+
+#define DISK_SECTOR_SIZE 512
 
 struct page;
 enum vm_type;
@@ -22,8 +24,6 @@ struct anon_page {
 
 struct bitmap *swap_table; // 0 - empty, 1 - filled
 int swap_size;
-const size_t SECTORS_PER_PAGE = PGSIZE / DISK_SECTOR_SIZE; // 8 = 4096 / 512
-
 
 void vm_anon_init (void);
 bool anon_initializer (struct page *page, enum vm_type type, void *kva);
