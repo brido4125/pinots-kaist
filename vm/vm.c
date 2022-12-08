@@ -387,11 +387,21 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
-
+	struct hash_iterator i;
+    hash_first (&i, spt);
+	while (hash_next(&i)){
+		struct page *target = hash_entry (hash_cur (&i), struct page, hash_elem);
+		//file-backed file인 경우
+		if(VM_TYPE(target->operations->type) == VM_FILE){
+			do_munmap(target->va);
+		}
+	}
+	
 	hash_destroy(&spt->spt_hash,spt_dealloc);
 }
 
 void spt_dealloc(struct hash_elem *e, void *aux){
 	struct page *page = hash_entry (e, struct page, hash_elem);
+	destroy(page);
 	free(page);
 }
