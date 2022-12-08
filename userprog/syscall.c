@@ -17,7 +17,7 @@
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
-void check_address(void* addr);
+struct page* check2_address(void* addr);
 void halt(void);
 void exit(int status);
 bool create(const char *file, unsigned initial_size);
@@ -38,7 +38,8 @@ int dup2(int oldfd, int newfd);
 void remove_file(int fd);
 void * mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
-
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
+void check_address(void *addr);
 
 /* System call.
  *
@@ -100,9 +101,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		f->R.rax = filesize(f->R.rdi);
 		break;
 	case SYS_READ:
+		check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
 		f->R.rax = read(f->R.rdi,f->R.rsi,f->R.rdx);
 		break;
 	case SYS_WRITE:
+		check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
 		f->R.rax = write(f->R.rdi,f->R.rsi,f->R.rdx);
 		break;
 	case SYS_FORK:
@@ -177,6 +180,15 @@ void check_address(void *addr) {
 	}
 }
 
+//project 3 add
+
+struct page * check2_address(void *addr){
+    if(is_kernel_vaddr(addr)){
+        exit(-1);
+    }
+    return spt_find_page(&thread_current()->spt,addr);
+}
+
 /* Project2-3 System Call */
 void halt(void){
 	power_off();
@@ -193,6 +205,9 @@ void exit (int status){
 
 /* Project2-3 System Call */
 bool create(const char *file, unsigned initial_size){
+	// if(!file){
+	// 	exit(-1);
+	// }
 	check_address(file);
 	return filesys_create(file,initial_size);
 }
@@ -224,7 +239,12 @@ int exec (const char *cmd_line){
 
 /* Project2-3 System Call */
 int open (const char *file){
+	
 	check_address(file);
+	// if(file ==NULL){
+	// 	return -1;
+	// }
+
 	lock_acquire(&lock);
 	struct file *fileobj = filesys_open(file);
 
@@ -460,4 +480,15 @@ mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 void
 munmap (void *addr) {
 	do_munmap(addr);
+}
+
+//project 3 add
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write){
+    for(int i=0; i<size; i++){
+        struct page* page = check2_address(buffer + i);
+        if(page == NULL)
+            exit(-1);
+        if(to_write == true && page->writable == false)
+            exit(-1);
+    }
 }
