@@ -76,6 +76,7 @@ file_backed_swap_out (struct page *page) {
 		pml4_set_dirty(thread_current()->pml4, page->va, false);
 	}
 	pml4_clear_page(thread_current()->pml4, page->va);
+	return true;
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -141,7 +142,7 @@ void do_munmap (void *addr) {
 		// struct frame *find_frame =find_page->frame;
 		
 		if (find_page == NULL) {
-    		return NULL;
+    		break;
     	}
 
 		// 연결 해제
@@ -150,7 +151,7 @@ void do_munmap (void *addr) {
 
 		struct container* container = (struct container*)find_page->uninit.aux;
 		// 페이지의 dirty bit이 1이면 true를, 0이면 false를 리턴한다.
-		if (pml4_is_dirty(&curr->pml4, find_page->va) == true){
+		if (pml4_is_dirty(curr->pml4, find_page->va)){
 			// 물리 프레임에 변경된 데이터를 다시 디스크 파일에 업데이트 buffer에 있는 데이터를 size만큼, file의 file_ofs부터 써준다.
 			file_write_at(container->file, addr, container->read_bytes, container->offset);
 			// dirty bit = 0

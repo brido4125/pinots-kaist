@@ -388,11 +388,11 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 	struct hash_iterator i;
-    hash_first (&i, spt);
+    hash_first (&i, &spt->spt_hash);
 	while (hash_next(&i)){
 		struct page *target = hash_entry (hash_cur (&i), struct page, hash_elem);
 		//file-backed file인 경우
-		if(VM_TYPE(target->operations->type) == VM_FILE){
+		if(target->operations->type == VM_FILE){
 			do_munmap(target->va);
 		}
 	}
