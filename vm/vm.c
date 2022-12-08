@@ -227,7 +227,7 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
-	if (vm_alloc_page(VM_ANON, addr, 1)) {
+	if (vm_alloc_page(VM_ANON|VM_MARKER_0, addr, 1)) {
 		
 		vm_claim_page(addr);
 		thread_current()->stack_bottom -= PGSIZE;
@@ -401,6 +401,6 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 
 void spt_dealloc(struct hash_elem *e, void *aux){
 	struct page *page = hash_entry (e, struct page, hash_elem);
-	destroy(page);
+	// destroy(page);
 	free(page);
 }

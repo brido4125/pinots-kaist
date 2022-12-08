@@ -142,7 +142,7 @@ void do_munmap (void *addr) {
 		// struct frame *find_frame =find_page->frame;
 		
 		if (find_page == NULL) {
-    		break;
+    		return NULL;
     	}
 
 		// 연결 해제

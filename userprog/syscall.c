@@ -467,7 +467,7 @@ mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 	// 찾는 파일이 디스크에 없는경우
 	struct file * target = find_file(fd);
 	if (target==NULL){
-		return false;
+		return NULL;
 	}
 
 	return do_mmap(addr, length, writable, target, offset);
