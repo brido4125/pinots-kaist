@@ -33,7 +33,7 @@ vm_anon_init (void) {
 
 	// (SECTORS_PER_PAGE = 8byte)  
 	// SECTORS_PER_PAGE = PGSIZE / DISK_SECTOR_SIZE; 8 = 4096 / 512
-	swap_size = disk_size(swap_disk)/SECTORS_PER_PAGE; 
+	size_t swap_size = disk_size(swap_disk)/SECTORS_PER_PAGE; 
 	// 디스크 섹터는 하드 디스크 내 정보를 저장하는 단위로, 자체적으로 주소를 갖는 storage의 단위다. 즉, 한 디스크 당 몇 개의 섹터가 들어가는지를 나눈 값을 swap_size로 지칭한다. 즉, 해당 swap_disk를 swap할 때 필요한 섹터 수가 결국 swap_size.
 
 	// swap size 크기만큼 swap_table을 비트맵으로 생성
@@ -106,11 +106,11 @@ anon_swap_out (struct page *page) {
     이제 프로세스가 이 페이지에 접근하면 page fault가 뜬다.
     */
 	bitmap_set(swap_table,empty_slot, true);
-	pml4_clear_page(&thread_current()->pml4, page->va);
+	pml4_clear_page(thread_current()->pml4, page->va);
 
 	/* 페이지의 swap_index 값을 이 페이지가 저장된 swap slot의 번호로 써준다.*/
 	anon_page->swap_sector = empty_slot;
-	
+	return true;
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */

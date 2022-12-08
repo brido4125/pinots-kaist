@@ -4,7 +4,6 @@
 #include "lib/kernel/bitmap.h"
 #include "threads/vaddr.h"
 
-
 #define DISK_SECTOR_SIZE 512
 
 struct page;
