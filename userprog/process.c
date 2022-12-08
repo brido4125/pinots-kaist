@@ -337,7 +337,7 @@ process_cleanup (void) {
 
 #ifdef VM
 	if(!hash_empty(&curr->spt.spt_hash)){
-		supplemental_page_table_kill (&curr->spt);
+		supplemental_page_table_kill (&curr->spt); // cleanup
 	}
 	// supplemental_page_table_kill (&curr->spt);
 #endif
