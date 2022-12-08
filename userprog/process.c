@@ -325,9 +325,9 @@ process_exit (void) {
 	}
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
 	file_close(curr->running);
+	process_cleanup ();//추후 실험 필요	
 	sema_up(&curr->wait_sema);
 	sema_down(&curr->free_sema);
-	process_cleanup ();//추후 실험 필요	
 }
 
 /* Free the current process's resources. */
@@ -815,8 +815,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		/* Project3 - Anon Page */
 		struct container* container = (struct container*)malloc(sizeof(struct container));
 		container->file = file;
-		container->read_bytes = page_read_bytes;
         container->offset = ofs;
+		container->read_bytes = page_read_bytes;
 
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, container))
