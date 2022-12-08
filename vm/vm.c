@@ -249,36 +249,35 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
 	struct page *page = NULL;
-
 	// check_address(addr);
-
 	if(is_kernel_vaddr(addr)){
 		return false;
 	}
 
-	// thread 구조체 내의 rsp_stack을 설정 
-	struct thread* cur = thread_current();
-	void *rsp_stack = is_kernel_vaddr(f->rsp) ? cur->rsp_stack : f->rsp;
+	if(not_present){
+		// thread 구조체 내의 rsp_stack을 설정 
+		struct thread* cur = thread_current();
+		void *rsp_stack = is_kernel_vaddr(f->rsp) ? cur->rsp_stack : f->rsp;
 
-
-	if (!vm_claim_page(addr)){
-		if (rsp_stack-8 <= addr  && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){
-			vm_stack_growth(cur->stack_bottom-PGSIZE);
+		if (!vm_claim_page(addr)){
+			if (rsp_stack-8 <= addr  && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){
+				vm_stack_growth(cur->stack_bottom-PGSIZE);
+				return true;
+			}  
+			
+			return false;
+		}
+		else
 			return true;
-		}  
-		
-		return false;
 	}
-	else
-		return true;
-	
-	// struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
-	// struct page *page = NULL;
+	return false;
+		// struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
+		// struct page *page = NULL;
 
-	// /* TODO: Validate the fault */
-	// /* TODO: Your code goes here */
-	// page = spt_find_page(spt,addr);
-	// return vm_do_claim_page (page);
+		// /* TODO: Validate the fault */
+		// /* TODO: Your code goes here */
+		// page = spt_find_page(spt,addr);
+		// return vm_do_claim_page (page);
 }
 
 /* Free the page.
