@@ -113,7 +113,7 @@ struct page *
 spt_find_page (struct supplemental_page_table *spt, void *va ) {
 	// project3
 	/* TODO: Fill this function. */
-	struct page* page = (struct page*)malloc(sizeof(page));	// dummy page 생성
+	struct page* page = (struct page*)malloc(sizeof(struct page));	// dummy page 생성
 	page->va = pg_round_down(va); // va가 가리키는 가상 page의 시작 포인트 (offset이 0으로 설정된 va)반환
 	struct hash_elem* target = hash_find(&spt->spt_hash,&page->hash_elem);
 	// SPT에서 hash_elem과 같은 요소를 검색해서 발견하면 elem 반환 아니면 NULL 반환
@@ -128,25 +128,22 @@ spt_find_page (struct supplemental_page_table *spt, void *va ) {
 /* Insert PAGE into spt with validation. */
 // spt에 va가 있는지 없는지 check
 bool spt_insert_page (struct supplemental_page_table *spt,struct page *page) {
-	int succ = false;
 	/* TODO: Fill this function. */
 	if (hash_insert(&spt->spt_hash,&page->hash_elem) == NULL){
-		succ = true;
-		return succ;
+		return true;
 	}
-	return succ;
+	return false;
 }
 
 /* Delete PAGE into spt with validation. */
 // spt에 va가 있는지 없는지 check
 bool spt_delete_page (struct supplemental_page_table *spt,struct page *page) {
-	int succ = false;
+
 	/* TODO: Fill this function. */
 	if (hash_delete(&spt->spt_hash,&page->hash_elem) == NULL){
-		return succ;
+		return true;
 	}
-	succ = true;
-	return succ;
+	return false;
 }
 
 void
