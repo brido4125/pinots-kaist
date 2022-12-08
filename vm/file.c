@@ -115,8 +115,8 @@ void* do_mmap (void *addr, size_t length, int writable, struct file *file, off_t
 
 		struct container *container = (struct container *)malloc(sizeof(struct container));
 		container->file = get_file;
-		container->read_bytes = page_read_bytes;
 		container->offset = offset;
+		container->read_bytes = page_read_bytes;
 
 		if (!vm_alloc_page_with_initializer (VM_FILE, addr, writable, lazy_load_segment, container)){
 			return NULL;
