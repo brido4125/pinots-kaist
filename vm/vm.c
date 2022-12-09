@@ -14,6 +14,7 @@ void spt_dealloc(struct hash_elem *e, void *aux);
 
 struct list frame_table; // project3 vm_get_frame()
 struct list_elem* clock_ref; // project3 vm_get_victim()
+struct lock frame_table_lock;
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -29,6 +30,7 @@ vm_init (void) {
 	/* TODO: Your code goes here. */
 	list_init(&frame_table);
 	clock_ref = list_begin(&frame_table);
+	lock_init(&frame_table_lock);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -164,12 +166,14 @@ vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
 	struct thread* curr = thread_current();
+	lock_acquire(&frame_table_lock);
 	for (clock_ref; clock_ref != list_end(&frame_table); clock_ref = list_next(clock_ref)){
 		victim = list_entry(clock_ref,struct frame,frame_elem);
 		//bit가 1인 경우
 		if(pml4_is_accessed(curr->pml4,victim->page->va)){
 			pml4_set_accessed(curr->pml4,victim->page->va,0);
 		}else{
+			lock_release(&frame_table_lock);
 			return victim;
 		}
 	}
@@ -182,9 +186,12 @@ vm_get_victim (void) {
 		if(pml4_is_accessed(curr->pml4,victim->page->va)){
 			pml4_set_accessed(curr->pml4,victim->page->va,0);
 		}else{
+			lock_release(&frame_table_lock);
 			return victim;
 		}
 	}
+	lock_release(&frame_table_lock);
+	ASSERT(clock_ref != NULL);
 	return victim;
 }
 
@@ -214,10 +221,12 @@ vm_get_frame (void) {
 		frame->page = NULL;
 		return frame;
 	}
-	list_push_back(&frame_table,&frame->frame_elem); 
+	lock_acquire(&frame_table_lock);
+	list_push_back(&frame_table,&frame->frame_elem);
+	lock_release(&frame_table_lock);
 	frame->page = NULL; //새 frame을 가져왔으니 page의 멤버를 초기화
-	//ASSERT (frame != NULL);
-	//ASSERT (frame->page == NULL);
+	ASSERT (frame != NULL);
+	ASSERT (frame->page == NULL);
 	return frame;
 }
 
