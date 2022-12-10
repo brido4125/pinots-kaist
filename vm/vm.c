@@ -235,7 +235,7 @@ static void
 vm_stack_growth (void *addr UNUSED) {
 	if (vm_alloc_page(VM_ANON|VM_MARKER_0, addr, 1)) {
 		
-		vm_claim_page(addr);
+		//vm_claim_page(addr);
 		thread_current()->stack_bottom -= PGSIZE;
 	}
 }
@@ -264,16 +264,20 @@ vm_try_handle_fault (struct intr_frame *f , void *addr ,bool user , bool write ,
 		struct thread* cur = thread_current();
 		void *rsp_stack = !user ? cur->rsp_stack : f->rsp;
 
-		if (!vm_claim_page(addr)){
-			if (rsp_stack-8 <= addr  && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){
-				vm_stack_growth(cur->stack_bottom-PGSIZE);
-				return true;
-			}  
-			
+		if (rsp_stack-8 <= addr  && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){
+				vm_stack_growth(pg_round_down(addr));
+		} 
+		page = spt_find_page(spt,addr);
+		if(page == NULL){
 			return false;
 		}
-		else
-			return true;
+		if(write && !page->writable){
+			return false;
+		}
+		if (!vm_do_claim_page(page)){
+			return false;
+		}
+		return true;
 	}
 	return false;
 		// struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;

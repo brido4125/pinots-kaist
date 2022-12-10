@@ -478,11 +478,21 @@ munmap (void *addr) {
 
 //project 3 add
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write){
-    for(int i=0; i<size; i++){
-        struct page* page = check_address(buffer + i);
-        if(page == NULL)
-            exit(-1);
-        if(to_write == true && page->writable == false)
-            exit(-1);
-    }
+    uintptr_t start_page = pg_round_down(buffer);
+	uintptr_t end_page = pg_round_down(buffer + size - 1);
+	if (buffer <= USER_STACK && buffer >= rsp)
+		return;
+	
+	for (; start_page <= end_page ; start_page += PGSIZE)
+	{
+		struct page *page = check_address(start_page);
+
+		if (page == NULL)
+			exit(-1);
+
+
+		// to_write : 버퍼(= 페이지)에 대한 쓰기, 읽기 접근 
+		if (to_write == true && page->writable == false)
+			exit(-1);
+	}
 }
