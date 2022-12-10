@@ -11,9 +11,8 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
 bool install_page (void *upage, void *kpage, bool writable);
-struct page* check2_address(void* addr);
 bool lazy_load_segment (struct page *page, void *aux);
-void check_address(void *addr);
+struct page* check_address(void *addr);
 
 /* Project3 - Anon Page */
 /*해당 구조체는 디스크에 저장되어 있지 않기 때문에, 특정 파일을 불러 오는 것이 아님 */
