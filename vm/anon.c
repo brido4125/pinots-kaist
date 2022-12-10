@@ -29,7 +29,6 @@ void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
 	swap_disk = disk_get(1,1);
-	
 
 	// (SECTORS_PER_PAGE = 8byte)  
 	// SECTORS_PER_PAGE = PGSIZE / DISK_SECTOR_SIZE; 8 = 4096 / 512

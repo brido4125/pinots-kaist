@@ -95,7 +95,7 @@ file_backed_destroy (struct page *page) {
 // 1) load_segment()가 파일의 정보를 담은 uninit 타입 페이지를 만들 때 파일 타입을 VM_FILE로 선언해주는 것과
 // 2) 매핑이 끝난 후 연속된 유저 페이지 나열의 첫 주소를 리턴한다는 점이 있다.
 
-
+// 성공하면 이 함수는 파일이 매핑된 가상 주소를 반환합니다. 실패하면 파일을 매핑하는 데 유효한 주소가 아닌 NULL을 반환해야 합니다.
 
 void* do_mmap (void *addr, size_t length, int writable, struct file *file, off_t offset) {
 	//size_t length = 사용자가 요청한 길이		

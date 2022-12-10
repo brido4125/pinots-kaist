@@ -16,7 +16,7 @@ struct list frame_table; // project3 vm_get_frame()
 struct list_elem* clock_ref; // project3 vm_get_victim()
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
- * intialize codes. */
+ * intialize codes. */ 
 void
 vm_init (void) {
 	vm_anon_init ();
@@ -216,8 +216,8 @@ vm_get_frame (void) {
 	}
 	list_push_back(&frame_table,&frame->frame_elem); 
 	frame->page = NULL; //새 frame을 가져왔으니 page의 멤버를 초기화
-	//ASSERT (frame != NULL);
-	//ASSERT (frame->page == NULL);
+	ASSERT (frame != NULL);
+	ASSERT (frame->page == NULL);
 	return frame;
 }
 
@@ -246,7 +246,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
 	struct page *page = NULL;
-	// check_address(addr);
+
 	if(is_kernel_vaddr(addr)){
 		return false;
 	}
@@ -268,13 +268,11 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 			return true;
 	}
 	return false;
-		// struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
-		// struct page *page = NULL;
+
 
 		// /* TODO: Validate the fault */
 		// /* TODO: Your code goes here */
-		// page = spt_find_page(spt,addr);
-		// return vm_do_claim_page (page);
+
 }
 
 /* Free the page.
