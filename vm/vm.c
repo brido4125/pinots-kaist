@@ -14,6 +14,7 @@ void spt_dealloc(struct hash_elem *e, void *aux);
 
 struct list frame_table; // project3 vm_get_frame()
 struct list_elem* clock_ref; // project3 vm_get_victim()
+struct lock frame_table_lock;
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */ 
@@ -29,6 +30,7 @@ vm_init (void) {
 	/* TODO: Your code goes here. */
 	list_init(&frame_table);
 	clock_ref = list_begin(&frame_table);
+	lock_init(&frame_table_lock);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -164,12 +166,14 @@ vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
 	struct thread* curr = thread_current();
+	lock_acquire(&frame_table_lock);
 	for (clock_ref; clock_ref != list_end(&frame_table); clock_ref = list_next(clock_ref)){
 		victim = list_entry(clock_ref,struct frame,frame_elem);
 		//bit가 1인 경우
 		if(pml4_is_accessed(curr->pml4,victim->page->va)){
 			pml4_set_accessed(curr->pml4,victim->page->va,0);
 		}else{
+			lock_release(&frame_table_lock);
 			return victim;
 		}
 	}
@@ -182,9 +186,12 @@ vm_get_victim (void) {
 		if(pml4_is_accessed(curr->pml4,victim->page->va)){
 			pml4_set_accessed(curr->pml4,victim->page->va,0);
 		}else{
+			lock_release(&frame_table_lock);
 			return victim;
 		}
 	}
+	lock_release(&frame_table_lock);
+	ASSERT(clock_ref != NULL);
 	return victim;
 }
 
@@ -214,7 +221,9 @@ vm_get_frame (void) {
 		frame->page = NULL;
 		return frame;
 	}
-	list_push_back(&frame_table,&frame->frame_elem); 
+	lock_acquire(&frame_table_lock);
+	list_push_back(&frame_table,&frame->frame_elem);
+	lock_release(&frame_table_lock);
 	frame->page = NULL; //새 frame을 가져왔으니 page의 멤버를 초기화
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
@@ -366,10 +375,7 @@ bool supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, s
                 return false;
             if(!vm_claim_page(upage))
                 return false;
-        }
-
-        if (parent_page->operations->type != VM_UNINIT) {   //! UNIT이 아닌 모든 페이지(stack 포함)는 부모의 것을 memcpy
-            struct page* child_page = spt_find_page(dst, upage);
+			struct page* child_page = spt_find_page(dst, upage);
             memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
         }
     }
@@ -382,9 +388,11 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 	struct hash_iterator i;
+	struct frame* frame;
     hash_first (&i, &spt->spt_hash);
 	while (hash_next(&i)){
 		struct page *target = hash_entry (hash_cur (&i), struct page, hash_elem);
+		frame = target->frame;
 		//file-backed file인 경우
 		if(target->operations->type == VM_FILE){
 			do_munmap(target->va);
@@ -392,6 +400,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	}
 	
 	hash_destroy(&spt->spt_hash,spt_dealloc);
+	free(frame);
 }
 
 void spt_dealloc(struct hash_elem *e, void *aux){
