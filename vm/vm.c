@@ -251,19 +251,18 @@ vm_handle_wp (struct page *page UNUSED) {
 //  2) push 시 8byte씩만 주소값이 내려감 write시 8byte아래로 주소값이 들어가면 정상적이지 않다. (user_stack영역안에 있더라도)
 // 3. 확인되면 vm_stack_growth 호출
 bool
-vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
-		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
+vm_try_handle_fault (struct intr_frame *f , void *addr ,bool user , bool write , bool not_present ) {
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
 	struct page *page = NULL;
-	// check_address(addr);
-	if(is_kernel_vaddr(addr)){
+
+	if(is_kernel_vaddr(addr) || addr == NULL){
 		return false;
 	}
 
 	if(not_present){
 		// thread 구조체 내의 rsp_stack을 설정 
 		struct thread* cur = thread_current();
-		void *rsp_stack = is_kernel_vaddr(f->rsp) ? cur->rsp_stack : f->rsp;
+		void *rsp_stack = !user ? cur->rsp_stack : f->rsp;
 
 		if (!vm_claim_page(addr)){
 			if (rsp_stack-8 <= addr  && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){
