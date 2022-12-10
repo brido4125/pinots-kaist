@@ -377,10 +377,7 @@ bool supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, s
                 return false;
             if(!vm_claim_page(upage))
                 return false;
-        }
-
-        if (parent_page->operations->type != VM_UNINIT) {   //! UNIT이 아닌 모든 페이지(stack 포함)는 부모의 것을 memcpy
-            struct page* child_page = spt_find_page(dst, upage);
+			struct page* child_page = spt_find_page(dst, upage);
             memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
         }
     }
