@@ -64,7 +64,6 @@ file_backed_swap_in (struct page *page, void *kva) {
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
-	
 	if(page==NULL){
 		return false;
 	}
@@ -72,7 +71,8 @@ file_backed_swap_out (struct page *page) {
 	struct file * file = aux->file;
 
 	if(pml4_is_dirty(thread_current()->pml4,page->va)){
-		file_write_at(file, page->va, aux->read_bytes, aux->offset);
+		file_write_at(file,page->va, aux->read_bytes, aux->offset);
+		// page->va == frame->page->kva (page->va 있는 정보나 frame에 있는 정보나 같다.)
 		pml4_set_dirty(thread_current()->pml4, page->va, false);
 	}
 	pml4_clear_page(thread_current()->pml4, page->va);
