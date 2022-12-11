@@ -17,7 +17,7 @@ struct list_elem* clock_ref; // project3 vm_get_victim()
 struct lock frame_table_lock;
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
- * intialize codes. */
+ * intialize codes. */ 
 void
 vm_init (void) {
 	vm_anon_init ();
@@ -280,13 +280,11 @@ vm_try_handle_fault (struct intr_frame *f , void *addr ,bool user , bool write ,
 		return true;
 	}
 	return false;
-		// struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
-		// struct page *page = NULL;
+
 
 		// /* TODO: Validate the fault */
 		// /* TODO: Your code goes here */
-		// page = spt_find_page(spt,addr);
-		// return vm_do_claim_page (page);
+
 }
 
 /* Free the page.
