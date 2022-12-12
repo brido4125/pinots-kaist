@@ -27,6 +27,7 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 void argument_stack(char ** parse, int count, struct intr_frame* if_);
+bool lazy_load_segment (struct page *page, void *aux);
 
 /* General process initializer for initd and other process. */
 static void
@@ -131,7 +132,6 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 
 	memcpy(newpage,parent_page,PGSIZE);
 	writable = is_writable(pte);
-
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
@@ -266,6 +266,9 @@ process_exec (void *f_name) {
 
 	/* We first kill the current context */
 	process_cleanup ();
+	// VM
+	struct thread *curr = thread_current();
+	supplemental_page_table_init(&curr->spt);
 
 	/* And then load the binary */
 	success = load (copy, &_if);
@@ -322,9 +325,9 @@ process_exit (void) {
 	}
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
 	file_close(curr->running);
+	process_cleanup ();//추후 실험 필요	
 	sema_up(&curr->wait_sema);
 	sema_down(&curr->free_sema);
-	process_cleanup ();//추후 실험 필요	
 }
 
 /* Free the current process's resources. */
@@ -333,7 +336,10 @@ process_cleanup (void) {
 	struct thread *curr = thread_current ();
 
 #ifdef VM
-	supplemental_page_table_kill (&curr->spt);
+	if(!hash_empty(&curr->spt.spt_hash)){
+		supplemental_page_table_kill (&curr->spt); // cleanup
+	}
+	// supplemental_page_table_kill (&curr->spt);
 #endif
 
 	uint64_t *pml4;
@@ -740,8 +746,11 @@ install_page (void *upage, void *kpage, bool writable) {
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool
-lazy_load_segment (struct page *page, void *aux) {
+// lazy_load_segment 는 vm_alloc_page_with_initializer의 4번째 argument로 제공된다(load_segment 안에서). 이 함수는 executable’s page의 initializer이며 page fault 발생시에 실행된다. 이 함수는 page struct와 aux를 arguments로 받는다. aux는 load_segment에서 설정하는 정보다. 당신은 이 정보를 사용하여 segment를 읽을 file을 찾아 segment를 메모리로 읽어야(read) 한다.
+
+// 성공하면 true를 반환하고 메모리 할당 오류 혹은 disk 읽기 오류가 발생하면 false를 반환한다.
+
+bool lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
@@ -768,6 +777,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
 
+	file_seek(file,ofs);
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -776,7 +786,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		/* Project3 - Anon Page */
+		struct container* container = (struct container*)malloc(sizeof(struct container));
+		container->file = file;
+    container->offset = ofs;
+		container->read_bytes = page_read_bytes;
+
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, aux))
 			return false;

@@ -10,7 +10,6 @@ void
 test_main (void)
 {
   pid_t child;
-
   /* Make child write file. */
   quiet = true;
 	child = fork("child-mm-wrt");

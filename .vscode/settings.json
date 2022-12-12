@@ -1,13 +1,17 @@
 {
     "files.associations": {
-        "syscall-nr.h": "c",
-        "*.inc": "c",
-        "file.h": "c",
-        "filesys.h": "c",
-        "stdio.h": "c",
-        "flags.h": "c",
-        "intrinsic.h": "c",
-        "string.h": "c",
-        "syscall.h": "c"
+        "process.h": "c",
+        "stdbool.h": "c",
+        "thread.h": "c",
+        "palloc.h": "c",
+        "hash.h": "c",
+        "vaddr.h": "c",
+        "list.h": "c",
+        "inspect.h": "c",
+        "bitmap.h": "c",
+        "loader.h": "c",
+        "vm.h": "c",
+        "mmu.h": "c",
+        "gdt.h": "c"
     }
 }
