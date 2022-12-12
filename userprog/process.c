@@ -339,6 +339,7 @@ process_cleanup (void) {
 	if(!hash_empty(&curr->spt.spt_hash)){
 		supplemental_page_table_kill (&curr->spt); // cleanup
 	}
+	return;
 	// supplemental_page_table_kill (&curr->spt);
 #endif
 

@@ -219,8 +219,6 @@ vm_get_frame (void) {
 	if(frame->kva == NULL){ //frame에서 가용한 page가 없다면
 		/* 해당 로직은 evict한 frame을 받아오기에 이미 Frame_Table 존재해서 list_push_back()할 필요 없음 */
 		frame = vm_evict_frame(); // 쫓아냄
-		frame->page = NULL;
-		return frame;
 	}
 	lock_acquire(&frame_table_lock);
 	list_push_back(&frame_table,&frame->frame_elem);
@@ -279,20 +277,24 @@ vm_try_handle_fault (struct intr_frame *f , void *addr ,bool user , bool write ,
 	// 부모 페이지가 원래 write 가능한지 check
 	page = spt_find_page(spt,addr);
 	if(write == true && page->writable == true && page){
-		vm_handle_wp(page);
+		return vm_handle_wp(page);
 	}
 }
 
 bool vm_handle_wp(struct page *page){
 	//새로 물리메모리 할당
-  void* parent_kva = page->frame->kva;
+  	void* parent_kva = page->frame->kva;
 	//새로 물리메모리 할당
-  page->frame->kva = palloc_get_page(PAL_USER);
-	//기존 부모의 데이터 복사
-  memcpy(page->frame->kva, parent_kva, PGSIZE);
-  pml4_set_page(thread_current()->pml4, page->va, page->frame->kva, page->writable);
-
-  return true;
+	struct frame *new_frame = (struct frame*)malloc(sizeof(struct frame));
+	/* TODO: Fill this function. */
+	new_frame->kva = palloc_get_page(PAL_USER);  
+	lock_acquire(&frame_table_lock);
+	list_push_back(&frame_table,&new_frame->frame_elem);
+	lock_release(&frame_table_lock);
+	page->frame = new_frame;
+  	memcpy(page->frame->kva, parent_kva, PGSIZE);
+  	pml4_set_page(thread_current()->pml4, page->va, page->frame->kva, page->writable);
+  	return true;
 }
 
 /* Free the page.
@@ -366,7 +368,7 @@ bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux
 // src의 추가 페이지 테이블에 있는 각 페이지를 반복하고 dst의 추가 페이지 테이블에 있는 항목의 정확한 복사본을 만듭니다. 
 // uninit 페이지를 할당하고 즉시 요청해야 합니다.
 
-bool supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct supplemental_page_table *src UNUSED) {
+bool supplemental_page_table_copy (struct supplemental_page_table *dst , struct supplemental_page_table *src ) {
     struct hash_iterator i;
     hash_first (&i, &src->spt_hash);
     while (hash_next (&i)) {	// src의 각각의 페이지를 반복문을 통해 복사
@@ -386,24 +388,24 @@ bool supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, s
 				return false;
 			}
 			struct page* child_page = spt_find_page(dst, upage);
-			ASSERT(child_page->operations->type == VM_UNINIT);
 			if(parent_page->operations->type == VM_FILE){
             	if(!vm_claim_page(upage))
             	    return false;
             	memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
 			}else{
-				ASSERT(parent_page->frame->kva != NULL);
 				child_page->frame = parent_page->frame;
+				child_page->writable = parent_page->writable;
+				if(install_page(child_page->va,child_page->frame->kva,child_page->writable)){
+					swap_in(child_page,child_page->frame->kva);
+				}
 				ASSERT(child_page->frame->kva != NULL);
-				swap_in(child_page,child_page->frame->kva);
-				ASSERT(child_page->operations->type != VM_UNINIT);
 				if (pml4_set_page(thread_current()->pml4, child_page->va, child_page->frame->kva, 0) == false){
 					return false;
 				}
         	}
     	}
-    return true;
 	}
+	return true;
 }
 
 /* Free the resource hold by the supplemental page table */
