@@ -11,6 +11,7 @@ uint64_t my_hash_function (const struct hash_elem *e, void *aux);
 bool my_less_func (const struct hash_elem *a,const struct hash_elem *b,void *aux);
 void hash_copy_func(struct hash_elem* elem, void *aux);
 void spt_dealloc(struct hash_elem *e, void *aux);
+bool vm_handle_wp(struct page *page);
 
 struct list frame_table; // project3 vm_get_frame()
 struct list_elem* clock_ref; // project3 vm_get_victim()
@@ -239,10 +240,6 @@ vm_stack_growth (void *addr UNUSED) {
 		thread_current()->stack_bottom -= PGSIZE;
 	}
 }
-/* Handle the fault on write_protected page */
-static bool
-vm_handle_wp (struct page *page UNUSED) {
-}
 
 /* Return true on success */
 // 1. 유저 -> 커널 transition시 thread 내 구조체에 유저 스택 저장
@@ -279,12 +276,23 @@ vm_try_handle_fault (struct intr_frame *f , void *addr ,bool user , bool write ,
 		}
 		return true;
 	}
-	return false;
+	// 부모 페이지가 원래 write 가능한지 check
+	page = spt_find_page(spt,addr);
+	if(write == true && page->writable == true && page){
+		vm_handle_wp(page);
+	}
+}
 
+bool vm_handle_wp(struct page *page){
+	//새로 물리메모리 할당
+  void* parent_kva = page->frame->kva;
+	//새로 물리메모리 할당
+  page->frame->kva = palloc_get_page(PAL_USER);
+	//기존 부모의 데이터 복사
+  memcpy(page->frame->kva, parent_kva, PGSIZE);
+  pml4_set_page(thread_current()->pml4, page->va, page->frame->kva, page->writable);
 
-		// /* TODO: Validate the fault */
-		// /* TODO: Your code goes here */
-
+  return true;
 }
 
 /* Free the page.
@@ -374,15 +382,28 @@ bool supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, s
                 return false;
         }
         else {
-            if(!vm_alloc_page(type, upage, writable))
-                return false;
-            if(!vm_claim_page(upage))
-                return false;
+			if(!vm_alloc_page(type, upage, writable)){
+				return false;
+			}
 			struct page* child_page = spt_find_page(dst, upage);
-            memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
-        }
-    }
+			ASSERT(child_page->operations->type == VM_UNINIT);
+			if(parent_page->operations->type == VM_FILE){
+            	if(!vm_claim_page(upage))
+            	    return false;
+            	memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
+			}else{
+				ASSERT(parent_page->frame->kva != NULL);
+				child_page->frame = parent_page->frame;
+				ASSERT(child_page->frame->kva != NULL);
+				swap_in(child_page,child_page->frame->kva);
+				ASSERT(child_page->operations->type != VM_UNINIT);
+				if (pml4_set_page(thread_current()->pml4, child_page->va, child_page->frame->kva, 0) == false){
+					return false;
+				}
+        	}
+    	}
     return true;
+	}
 }
 
 /* Free the resource hold by the supplemental page table */
