@@ -11,6 +11,7 @@
         "bitmap.h": "c",
         "loader.h": "c",
         "vm.h": "c",
-        "mmu.h": "c"
+        "mmu.h": "c",
+        "gdt.h": "c"
     }
 }
