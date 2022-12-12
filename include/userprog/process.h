@@ -10,7 +10,6 @@ int process_exec (void *f_name);
 int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
-
 bool install_page (void *upage, void *kpage, bool writable);
 bool lazy_load_segment (struct page *page, void *aux);
 struct page* check_address(void *addr);
