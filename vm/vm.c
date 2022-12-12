@@ -411,5 +411,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 void spt_dealloc(struct hash_elem *e, void *aux){
 	struct page *page = hash_entry (e, struct page, hash_elem);
 	// destroy(page);
+	ASSERT(is_user_vaddr(page->va));
+	ASSERT(is_kernel_vaddr(page));
 	free(page);
 }
