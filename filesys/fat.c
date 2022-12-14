@@ -172,23 +172,27 @@ void fat_fs_init (void) {
  * Returns 0 if fails to allocate a new cluster. */
 cluster_t fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
-	cluster_t new_clst = get_empty_cluster();
-	if(new_clst != 0){
-		fat_put(new_clst,EOChain);
-		if(clst != 0){
-			fat_put(clst,new_clst);
-		}
+	cluster_t i = 2;
+	while (fat_get(i) != 0 && i < fat_fs->fat_length) {
+		++i;
 	}
-	return new_clst;
-}
-
-cluster_t get_empty_cluster() {
-	// fat_bitmap을 
-	size_t clst = bitmap_scan_and_flip(fat_bitmap, 0, 1, false) + 1; // 인덱스는 0부터 시작하나 cluster는 1부터 시작
-	if (clst == SIZE_MAX)
+	
+	if (i == fat_fs->fat_length) {	// FAT가 가득 찼다면
 		return 0;
-	else
-		return (cluster_t) clst;
+	}
+	
+	fat_put(i, EOChain);	// fat안의 값 업데이트
+
+	if (clst == 0) {	// 새로운 체인 생성
+		return i;
+	}
+
+	while(fat_get(clst) != EOChain) {
+		clst = fat_get(clst);
+	}
+
+	fat_put(clst, i);
+	return i;
 }
 
 
@@ -198,7 +202,6 @@ void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	/* TODO: Your code goes here. */
 	while(clst != EOChain){
-		bitmap_set(fat_bitmap,clst-1,false);
 		clst = fat_get(clst);
 	}
 	if(pclst != 0){
@@ -211,10 +214,6 @@ void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
 	ASSERT(clst >= 1);
-	/* 해당 bitmap에 현재 인자로 들어온 clst가 마킹 되어있지 않으면 mark 호출 */
-	if(!bitmap_test(fat_bitmap,clst-1)){
-		bitmap_mark(fat_bitmap,clst-1);
-	}
 	fat_fs->fat[clst] = val;
 }
 
@@ -223,7 +222,6 @@ cluster_t
 fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
 	ASSERT(clst >= 1);
-	ASSERT(bitmap_test(fat_bitmap,clst-1));
 	ASSERT(clst < fat_fs->fat_length);
 	return fat_fs->fat[clst];
 }
@@ -234,6 +232,5 @@ cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
 	ASSERT(clst >= 1);
 	return fat_fs->data_start + clst * SECTORS_PER_CLUSTER;
-
 }
 
