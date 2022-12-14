@@ -17,6 +17,7 @@
         "syscall.h": "c",
         "directory.h": "c",
         "filesys.h": "c",
-        "off_t.h": "c"
+        "off_t.h": "c",
+        "inode.h": "c"
     }
 }

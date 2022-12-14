@@ -10,18 +10,17 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
-/* On-disk inode.
- * Must be exactly DISK_SECTOR_SIZE bytes long. */
-struct inode_disk {
-	disk_sector_t start;                /* First data sector. */
-	off_t length;                       /* File size in bytes. */
-	unsigned magic;                     /* Magic number. */
-	bool isdir;		// 디렉토리 구분 변수
-	uint32_t unused[125];               /* Not used. */
-
-	uint32_t is_link;
-	char link_name[492];
-};
+// /* On-disk inode.
+//  * Must be exactly DISK_SECTOR_SIZE bytes long. */
+// struct inode_disk {
+// 	disk_sector_t start;                /* First data sector. */
+// 	off_t length;                       /* File size in bytes. */
+// 	unsigned magic;                     /* Magic number. */
+// 	bool isdir;		// 디렉토리 구분 변수
+// 	uint32_t unused[125];               /* Not used. */
+// 	uint32_t is_link;
+// 	char link_name[492];
+// };
 
 /* Returns the number of sectors to allocate for an inode SIZE
  * bytes long. */
@@ -30,15 +29,15 @@ bytes_to_sectors (off_t size) {
 	return DIV_ROUND_UP (size, DISK_SECTOR_SIZE);
 }
 
-/* In-memory inode. */
-struct inode {
-	struct list_elem elem;              /* Element in inode list. */
-	disk_sector_t sector;               /* Sector number of disk location. */
-	int open_cnt;                       /* Number of openers. */
-	bool removed;                       /* True if deleted, false otherwise. */
-	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
-	struct inode_disk data;             /* Inode content. */
-};
+// /* In-memory inode. */
+// struct inode {
+// 	struct list_elem elem;              /* Element in inode list. */
+// 	disk_sector_t sector;               /* Sector number of disk location. */
+// 	int open_cnt;                       /* Number of openers. */
+// 	bool removed;                       /* True if deleted, false otherwise. */
+// 	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
+// 	struct inode_disk data;             /* Inode content. */
+// };
 
 /* Returns the disk sector that contains byte offset POS within
  * INODE.
@@ -477,7 +476,7 @@ bool sys_chdir(const char *path_name){
 	struct inode *inode = NULL;
 	while (token != NULL){
 		//dir에서 token이름의 파일 검색, inode의 정보를 저장
-		if(!dir_lookup(chidr, token, &inode)){
+		if(!dir_lookup(chdir, token, &inode)){
 			dir_close(chdir);
 			return false;
 		}
@@ -494,7 +493,7 @@ bool sys_chdir(const char *path_name){
 		chdir = dir_open(inode);
 
 		// token에 검색할 경로이름 저장
-		token = strok_r(NULL, "/", &savePtr);
+		token = strtok_r(NULL, "/", &savePtr);
 	}
 	dir_close(thread_current()->cur_dir);
 	thread_current()->cur_dir = chdir;
@@ -504,7 +503,7 @@ bool sys_chdir(const char *path_name){
 // directory 생성
 bool sys_mkdir(const char *dir){
 	lock_acquire(&file_rw_lock);
-	bool new_dir(filesys_create_dir(dir));
+	bool new_dir = filesys_create_dir(dir);
 	lock_release(&file_rw_lock);
 	return new_dir;
 }
@@ -630,7 +629,7 @@ struct dir* parse_path(char *path_name, char *file_name){
 
 // file의 inode가 기록된 sector 찾기
 struct cluster_t *sys_inumber(int fd) {
-	struct file *target = find_file_by_fd(fd);
+	struct file *target = find_file(fd);
 
     if (target == NULL) {
         return false;
@@ -657,7 +656,7 @@ bool link_inode_create (disk_sector_t sector, char* path_name) {
 		disk_inode->magic = INODE_MAGIC;
 
         // link file 여부 추가
-        disk_inode->is_dir = 0;
+        disk_inode->isdir = 0;
         disk_inode->is_link = 1;
 
         strlcpy(disk_inode->link_name, path_name, strlen(path_name) + 1);

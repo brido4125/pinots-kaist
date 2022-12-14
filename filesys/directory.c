@@ -6,18 +6,18 @@
 #include "filesys/inode.h"
 #include "threads/malloc.h"
 
-/* A directory. */
-struct dir {
-	struct inode *inode;                /* Backing store. */
-	off_t pos;                          /* Current position. */
-};
+// /* A directory. */
+// struct dir {
+// 	struct inode *inode;                /* Backing store. */
+// 	off_t pos;                          /* Current position. */
+// };
 
-/* A single directory entry. */
-struct dir_entry {
-	disk_sector_t inode_sector;         /* Sector number of header. */
-	char name[NAME_MAX + 1];            /* Null terminated file name. */
-	bool in_use;                        /* In use or free? */
-};
+// /* A single directory entry. */
+// struct dir_entry {
+// 	disk_sector_t inode_sector;         /* Sector number of header. */
+// 	char name[NAME_MAX + 1];            /* Null terminated file name. */
+// 	bool in_use;                        /* In use or free? */
+// };
 
 /* Creates a directory with space for ENTRY_CNT entries in the
  * given SECTOR.  Returns true if successful, false on failure. */
@@ -222,7 +222,7 @@ bool sys_readdir(int fd, char *name) {
 	}
 
     // fd리스트에서 fd에 대한 file정보 얻어옴
-	struct file *target = find_file_by_fd(fd);
+	struct file *target = find_file(fd);
     if (target == NULL) {
         return false;
 	}
@@ -253,7 +253,7 @@ void dir_seek (struct dir *dir, off_t new_pos) {
 
 // file의 directory 여부 판단
 bool is_dir(int fd) {
-	struct file *target = find_file_by_fd(fd);
+	struct file *target = find_file(fd);
 
     if (target == NULL) {
         return false;
