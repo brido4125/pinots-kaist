@@ -3,6 +3,7 @@
 #include "filesys/filesys.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
+#include "lib/kernel/bitmap.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -27,9 +28,12 @@ struct fat_fs {
 };
 
 static struct fat_fs *fat_fs;
+struct bitmap *fat_bitmap; // 0 - empty, 1 - filled
+
 
 void fat_boot_create (void);
 void fat_fs_init (void);
+cluster_t get_empty_cluster();
 
 void
 fat_init (void) {
@@ -49,6 +53,9 @@ fat_init (void) {
 	if (fat_fs->bs.magic != FAT_MAGIC)
 		fat_boot_create ();
 	fat_fs_init ();
+
+	// project 4
+	fat_bitmap = bitmap_create(fat_fs->fat_length);
 }
 
 void
@@ -150,9 +157,10 @@ fat_boot_create (void) {
 	};
 }
 
-void
-fat_fs_init (void) {
+void fat_fs_init (void) {
 	/* TODO: Your code goes here. */
+	fat_fs->fat_length = fat_fs->bs.total_sectors / SECTORS_PER_CLUSTER ;//sectors_per_cluster를 바꾸면 수정 
+	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -162,32 +170,69 @@ fat_fs_init (void) {
 /* Add a cluster to the chain.
  * If CLST is 0, start a new chain.
  * Returns 0 if fails to allocate a new cluster. */
-cluster_t
-fat_create_chain (cluster_t clst) {
+cluster_t fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	cluster_t new_clst = get_empty_cluster();
+	if(new_clst != 0){
+		fat_put(new_clst,EOChain);
+		if(clst != 0){
+			fat_put(clst,new_clst);
+		}
+	}
+	return new_clst;
 }
+
+cluster_t get_empty_cluster() {
+	// fat_bitmap을 
+	size_t clst = bitmap_scan_and_flip(fat_bitmap, 0, 1, false) + 1; // 인덱스는 0부터 시작하나 cluster는 1부터 시작
+	if (clst == SIZE_MAX)
+		return 0;
+	else
+		return (cluster_t) clst;
+}
+
 
 /* Remove the chain of clusters starting from CLST.
  * If PCLST is 0, assume CLST as the start of the chain. */
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	/* TODO: Your code goes here. */
+	while(clst != EOChain){
+		bitmap_set(fat_bitmap,clst-1,false);
+		clst = fat_get(clst);
+	}
+	if(pclst != 0){
+		fat_put(pclst,EOChain);
+	}
 }
 
 /* Update a value in the FAT table. */
 void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
+	ASSERT(clst >= 1);
+	/* 해당 bitmap에 현재 인자로 들어온 clst가 마킹 되어있지 않으면 mark 호출 */
+	if(!bitmap_test(fat_bitmap,clst-1)){
+		bitmap_mark(fat_bitmap,clst-1);
+	}
+	fat_fs->fat[clst] = val;
 }
 
 /* Fetch a value in the FAT table. */
 cluster_t
 fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	ASSERT(clst >= 1);
+	ASSERT(bitmap_test(fat_bitmap,clst-1));
+	ASSERT(clst < fat_fs->fat_length);
+	return fat_fs->fat[clst];
 }
 
 /* Covert a cluster # to a sector number. */
 disk_sector_t
 cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	ASSERT(clst >= 1);
+	return fat_fs->data_start + clst * SECTORS_PER_CLUSTER;
+
 }
