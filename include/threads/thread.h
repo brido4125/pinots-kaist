@@ -6,6 +6,10 @@
 #include <stdint.h>
 #include "threads/interrupt.h"
 #include "threads/synch.h"
+#include "include/filesys/fat.h"
+#include "include/filesys/directory.h"
+#include "include/devices/disk.h"
+#include "include/filesys/file.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
