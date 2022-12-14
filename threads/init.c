@@ -36,6 +36,8 @@
 #include "devices/disk.h"
 #include "filesys/filesys.h"
 #include "filesys/fsutil.h"
+#include "filesys/inode.h"
+#include "filesys/directory.h"
 #endif
 
 /* Page-map-level-4 with kernel mappings only. */
