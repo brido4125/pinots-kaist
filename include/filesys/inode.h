@@ -22,5 +22,13 @@ void inode_deny_write (struct inode *);
 void inode_allow_write (struct inode *);
 off_t inode_length (const struct inode *);
 cluster_t sector_to_cluster(disk_sector_t sector);
+//add
+bool link_inode_create (disk_sector_t sector, char* path_name);
+struct cluster_t *sys_inumber(int fd);
+struct dir* parse_path(char *path_name, char *file_name);
+bool filesys_create_dir(const char* name);
+bool sys_mkdir(const char *dir);
+bool sys_chdir(const char *path_name);
+bool inode_is_dir(const struct inode* inode;
 
 #endif /* filesys/inode.h */
