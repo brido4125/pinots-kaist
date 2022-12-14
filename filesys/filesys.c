@@ -4,10 +4,10 @@
 #include <string.h>
 #include "filesys/file.h"
 #include "filesys/free-map.h"
-#include "filesys/inode.h"
+#include "include/filesys/inode.h"
 #include "filesys/directory.h"
 #include "devices/disk.h"
-
+#include <stdlib.h>
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
 
@@ -98,7 +98,6 @@ filesys_create (const char *name, off_t initial_size) {
 
 	return success;
 }
-
 /* Opens the file with the given NAME.
  * Returns the new file if successful or a null pointer
  * otherwise.
@@ -128,5 +127,7 @@ filesys_remove (const char *name) {
 
 	return success;
 
-    
+    #endif
 }
+
+

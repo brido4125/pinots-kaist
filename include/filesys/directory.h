@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "devices/disk.h"
-
+#include "include/filesys/off_t.h"
 /* Maximum length of a file name component.
  * This is the traditional UNIX maximum length.
  * After directories are implemented, this maximum length may be
@@ -28,5 +28,19 @@ bool dir_remove (struct dir *, const char *name);
 bool dir_readdir (struct dir *, char name[NAME_MAX + 1]);
 // add
 bool is_dir(int fd);
+bool sys_readdir(int fd, char *name);
 
+
+/* A directory. */
+struct dir {
+	struct inode *inode;                /* Backing store. */
+	off_t pos;                          /* Current position. */
+};
+
+/* A single directory entry. */
+struct dir_entry {
+	disk_sector_t inode_sector;         /* Sector number of header. */
+	char name[NAME_MAX + 1];            /* Null terminated file name. */
+	bool in_use;                        /* In use or free? */
+};
 #endif /* filesys/directory.h */
