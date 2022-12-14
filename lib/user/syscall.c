@@ -183,34 +183,11 @@ inumber (int fd) {
 	return syscall1 (SYS_INUMBER, fd);
 }
 
-// 바로가기 file 생성
-int symlink (const char *target, const char *linkpath) {
-    // SOFT LINK
-    bool success = false;
-    char* cp_link = (char *)malloc(strlen(linkpath) + 1);
-    strlcpy(cp_link, linkpath, strlen(linkpath) + 1);
-
-    // cp_name의경로분석
-    char* file_link = (char *)malloc(strlen(cp_link) + 1);
-    struct dir* dir = parse_path(cp_link, file_link);
-
-    cluster_t inode_cluster = fat_create_chain(0);
-
-    // link file 전용 inode 생성 및 directory에 추가
-    success = (dir != NULL
-               && link_inode_create(inode_cluster, target)
-               && dir_add(dir, file_link, inode_cluster));
-
-    if (!success && inode_cluster != 0) {
-        fat_remove_chain(inode_cluster, 0);
-	}
-    
-    dir_close(dir);
-    free(cp_link);
-    free(file_link);
-
-    return success - 1;
+int
+symlink (const char* target, const char* linkpath) {
+	return syscall2 (SYS_SYMLINK, target, linkpath);
 }
+
 int
 mount (const char *path, int chan_no, int dev_no) {
 	return syscall3 (SYS_MOUNT, path, chan_no, dev_no);

@@ -4,10 +4,12 @@
 #include <stdbool.h>
 #include "filesys/off_t.h"
 #include "devices/disk.h"
+
 #include "filesys/file.h"
 #include "fat.h"
 #include "include/lib/kernel/list.h"
 #include "include/filesys/off_t.h"
+
 
 struct bitmap;
 
@@ -34,7 +36,7 @@ struct inode {
 
 
 void inode_init (void);
-bool inode_create (disk_sector_t, off_t, bool);
+bool inode_create (disk_sector_t, off_t);
 struct inode *inode_open (disk_sector_t);
 struct inode *inode_reopen (struct inode *);
 disk_sector_t inode_get_inumber (const struct inode *);

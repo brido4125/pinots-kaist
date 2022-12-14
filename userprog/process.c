@@ -328,9 +328,6 @@ process_exit (void) {
 	process_cleanup ();//추후 실험 필요	
 	sema_up(&curr->wait_sema);
 	sema_down(&curr->free_sema);
-	#ifdef EFILESYS
-		dir_close(thread_current()-> cur_dir);  // 스레드의 현재 작업 디렉터리의 정보 메모리에서 해지
-	#endif
 }
 
 /* Free the current process's resources. */

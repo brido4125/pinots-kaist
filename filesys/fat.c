@@ -233,4 +233,3 @@ cluster_to_sector (cluster_t clst) {
 	ASSERT(clst >= 1);
 	return fat_fs->data_start + clst * SECTORS_PER_CLUSTER;
 }
-
