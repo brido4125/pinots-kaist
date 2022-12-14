@@ -19,7 +19,7 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 void halt(void);
 void exit(int status);
-bool create(const char *file, unsigned initial_size);
+bool create(const char *file, unsigned initial_size, bool isdir);
 bool remove(const char *file);
 int exec (const char *cmd_line);
 int open (const char *file);
@@ -85,7 +85,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		exit(f->R.rdi);
 		break;
 	case SYS_CREATE:
-		f->R.rax = create(f->R.rdi,f->R.rsi);
+		f->R.rax = create(f->R.rdi,f->R.rsi, f->R.rdx);
 		break;
 	case SYS_REMOVE:
 		f->R.rax = remove(f->R.rdi);
@@ -196,7 +196,7 @@ void exit (int status){
 }
 
 /* Project2-3 System Call */
-bool create(const char *file, unsigned initial_size){
+bool create(const char *file, unsigned initial_size, bool isdir){
 	// if(!file){
 	// 	exit(-1);
 	// }

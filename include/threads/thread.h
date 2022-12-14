@@ -144,6 +144,7 @@ struct thread {
 	struct supplemental_page_table spt;
 	void* stack_bottom;
 	void* rsp_stack;
+	struct dir *cur_dir; //dir를 절대/상대적 dir로 바꾸기 위해
 #endif
 
 	/* Owned by thread.c. */

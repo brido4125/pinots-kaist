@@ -23,7 +23,7 @@ struct dir_entry {
  * given SECTOR.  Returns true if successful, false on failure. */
 bool
 dir_create (disk_sector_t sector, size_t entry_cnt) {
-	return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+	return inode_create (sector, entry_cnt * sizeof (struct dir_entry), 1);
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -213,4 +213,51 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1]) {
 		}
 	}
 	return false;
+}
+
+// directory 내 파일 존재 여부 확인
+bool sys_readdir(int fd, char *name) {
+    if (name == NULL) {
+        return false;
+	}
+
+    // fd리스트에서 fd에 대한 file정보 얻어옴
+	struct file *target = find_file_by_fd(fd);
+    if (target == NULL) {
+        return false;
+	}
+
+    // fd의 file->inode가 디렉터리인지 검사
+    if (!inode_is_dir(file_get_inode(target))) {
+        return false;
+	}
+
+    // p_file을 dir자료구조로 포인팅
+    struct dir *p_file = target;
+    if (p_file->pos == 0) {
+        dir_seek(p_file, 2 * sizeof(struct dir_entry));		// ".", ".." 제외
+	}
+
+    // 디렉터리의 엔트리에서 ".", ".." 이름을 제외한 파일이름을 name에 저장
+    bool result = dir_readdir(p_file, name);
+
+    return result;
+}
+
+// 디렉토리 포지션 변경
+void dir_seek (struct dir *dir, off_t new_pos) {
+	ASSERT (dir != NULL);
+	ASSERT (new_pos >= 0);
+	dir->pos = new_pos;
+}
+
+// file의 directory 여부 판단
+bool is_dir(int fd) {
+	struct file *target = find_file_by_fd(fd);
+
+    if (target == NULL) {
+        return false;
+	}
+
+    return inode_is_dir(file_get_inode(target));
 }

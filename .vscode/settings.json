@@ -12,6 +12,11 @@
         "loader.h": "c",
         "vm.h": "c",
         "mmu.h": "c",
-        "gdt.h": "c"
+        "gdt.h": "c",
+        "flags.h": "c",
+        "syscall.h": "c",
+        "directory.h": "c",
+        "filesys.h": "c",
+        "off_t.h": "c"
     }
 }
