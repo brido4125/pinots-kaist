@@ -139,6 +139,10 @@ thread_init (void) {
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
+
+	#ifdef EFILESYS
+		initial_thread->cur_dir = NULL;
+	#endif
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -247,6 +251,11 @@ thread_create (const char *name, int priority,
 	t->stdin_count = 1;
 	t->stdout_count = 1;
 
+	#ifdef EFILESYS
+		if(thread_current()->cur_dir != NULL){
+			t->cur_dir = dir_reopen(thread_current()->cur_dir);
+		}
+	#endif
 	/* Add to run queue. */
 	thread_unblock (t);
 	test_max_priority(thread_current()->priority);

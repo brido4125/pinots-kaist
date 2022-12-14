@@ -16,8 +16,11 @@ struct inode_disk {
 	disk_sector_t start;                /* First data sector. */
 	off_t length;                       /* File size in bytes. */
 	unsigned magic;                     /* Magic number. */
-	bool isdir;
+	bool isdir;		// 디렉토리 구분 변수
 	uint32_t unused[125];               /* Not used. */
+
+	uint32_t is_link;
+	char link_name[492];
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -175,7 +178,7 @@ inode_open (disk_sector_t sector) {
 	inode->open_cnt = 1;
 	inode->deny_write_cnt = 0;
 	inode->removed = false;
-	disk_read (filesys_disk, inode->sector, &inode->data);
+	disk_read (filesys_disk, cluster_to_sector(inode->sector), &inode->data);
 	return inode;
 }
 
@@ -436,4 +439,238 @@ inode_allow_write (struct inode *inode) {
 off_t
 inode_length (const struct inode *inode) {
 	return inode->data.length;
+}
+
+//inode가 디렉토리 인지 판단
+bool inode_is_dir(const struct inode* inode){
+	bool result;
+	//inode_disk 자료구조 메모리에 할당
+	struct inode_disk * disk_inode = calloc (1, sizeof(*disk_inode));
+	// 할당 받은 inode_disk에 inode-> sector 내용 저장
+	disk_read(filesys_disk, cluster_to_sector(inode->sector), disk_inode);
+	// 
+	result = disk_inode->isdir;
+	free(disk_inode);
+
+	return result;
+}
+
+bool sys_chdir(const char *path_name){
+	if(path_name == NULL){
+		return false;
+	}
+	//cp_name을 할당받아 파일경로를 복사
+	char *cp_name = (char*) malloc (strlen(path_name)+1);
+	strlcpy(cp_name, path_name, strlen(path_name)+1);
+
+	struct dir *chdir = NULL;
+	if (cp_name[0] == "/"){   // 절대 경로일경우
+		chdir = dir_open_root();
+	}
+	else { // 상대 경로일 경우
+		chdir =dir_reopen(thread_current()->cur_dir);
+	}
+	// dir 경로 분석, 디렉토리 반환
+	char *token, *savePtr;
+	token = strtok_r(cp_name, "/", &savePtr);
+
+	struct inode *inode = NULL;
+	while (token != NULL){
+		//dir에서 token이름의 파일 검색, inode의 정보를 저장
+		if(!dir_lookup(chidr, token, &inode)){
+			dir_close(chdir);
+			return false;
+		}
+
+		// inode가 파일일경우 NULL 반환
+		if(!inode_is_dir(inode)){
+			dir_close(chdir);
+			return false;
+		}
+		// dir의 디렉토리 정보를 메모리에서 해지
+		dir_close(chdir);
+
+		//inode의 디렉토리 정보를  dir에 저장
+		chdir = dir_open(inode);
+
+		// token에 검색할 경로이름 저장
+		token = strok_r(NULL, "/", &savePtr);
+	}
+	dir_close(thread_current()->cur_dir);
+	thread_current()->cur_dir = chdir;
+	free(cp_name);
+	return true;
+}
+// directory 생성
+bool sys_mkdir(const char *dir){
+	lock_acquire(&file_rw_lock);
+	bool new_dir(filesys_create_dir(dir));
+	lock_release(&file_rw_lock);
+	return new_dir;
+}
+
+bool filesys_create_dir(const char* name){
+	bool success = false;
+
+	//name의 파일 경로를 cp_name에 복사
+    char* cp_name = (char*) malloc (strlen(name)+1);
+	strlcpy(cp_name, name, strlen(name) +1);
+
+	//name 경로 분석
+	char* file_name = (char*)malloc(strlen(name)+1);
+	struct dir* dir = parse_path(cp_name, file_name);
+
+	//bitmap에서 inode sector 번호 할당
+	cluster_t inode_cluster = fat_create_chain(0);
+	struct inode *sub_dir_inode;
+	struct dir *sub_dir = NULL;
+
+	/* 할당 받은 sector에 file_name의 디렉터리 생성
+	디렉터리 엔트리에 file_name의 엔트리 추가
+	디렉터리 엔트리에 ‘.’, ‘..’ 파일의 엔트리 추가 */
+	success = (
+		dir != NULL
+		&& dir_create(inode_cluster, 16)
+		&& dir_add(dir, file_name, inode_cluster)
+		&& dir_lookup(dir, file_name, &sub_dir_inode)
+		&& dir_add(sub_dir = dir_open(sub_dir_inode), ",", inode_cluster)
+		&& dir_add(sub_dir, "..", inode_get_inumber(dir_get_inode(dir))));
+	
+	if(!success && inode_cluster != 0){
+		fat_remove_chain(inode_cluster, 0);
+	}
+	
+	dir_close(sub_dir);
+	dir_close(dir);
+	free(cp_name);
+	free(file_name);
+	return success;
+}
+
+struct dir* parse_path(char *path_name, char *file_name){
+	// file_name: path_name을 분석하여 파일, 디렉터리의 이름을 포인팅
+	struct dir* dir =NULL;
+	if(path_name == NULL || file_name == NULL){
+		return NULL;
+	}
+	if (strlen(path_name) == 0){
+		return NULL;
+	}
+
+	//path_name의 절대상대 경로에 따른 디렉토리 정보저장
+	if (path_name[0] == '/'){
+		dir=dir_open_root();
+	}
+	else{
+		dir = dir_reopen(thread_current()->cur_dir);
+	}
+	char *token, *nextToken, *savePtr;
+	token = strtok_r(path_name,"/", &savePtr);
+	nextToken = strtok_r(NULL, "/", &savePtr);
+
+	// "/"를 open하려는 케이스
+	if (token == NULL){
+		token = (char*)malloc(2);
+		strlcpy(token, ",", 2);
+	}
+
+	struct inode* inode;
+	while (token != NULL && nextToken !=NULL){
+		// dir에서 token이름의 파일을 검색하여 inode의 정보를 저장
+		if (!dir_lookup(dir, token, &inode)){
+			dir_close(dir);
+			return NULL;
+		}
+		if (inode->data.is_link){
+
+			char* new_path = (char*)malloc(sizeof(strlen(inode->data.link_name))+1);
+			strlcpy(new_path, inode->data.link_name, strlen(inode->data.link_name)+1);
+
+			strlcpy(path_name, new_path, strlen(new_path)+1);
+			free(new_path);
+
+			strlcat(path_name,"/",strlen(path_name)+2);
+			strlcat(path_name, nextToken, strlen(path_name)+strlen(nextToken)+1);
+			strlcat(path_name, savePtr, strlen(path_name)+strlen(savePtr)+1);
+
+			dir_close(dir);
+
+			// 파싱된 경로로 다시 시작한다.
+			if(path_name[0] == '/'){
+				dir = dir_open_root();
+			}
+			else{
+				dir =dir_reopen(thread_current()->cur_dir);
+			}
+
+			token = strtok_r(path_name,"/", &savePtr);
+			nextToken = strtok_r(NULL, "/", &savePtr);
+
+			continue;
+		}
+			// inode가 파일일 경우 NULL 반환
+			if (!inode_is_dir(inode)){
+				dir_close(dir);
+				inode_close(inode);
+				return NULL;
+			}
+			//dir의 디렉터리 정보를 메모리에서 해지
+			dir = dir_open(inode);
+
+			//token에 검색할 경로이름 저장
+			token = nextToken;
+			nextToken = strtok_r(NULL, "/", &savePtr);
+		}
+	// token의 파일 이름을 file_name에 저장
+	strlcpy(file_name, token, strlen(token)+1);
+
+	//dir 정보 반화
+	return dir;
+}
+
+// file의 inode가 기록된 sector 찾기
+struct cluster_t *sys_inumber(int fd) {
+	struct file *target = find_file_by_fd(fd);
+
+    if (target == NULL) {
+        return false;
+	}
+
+    return inode_get_inumber(file_get_inode(target));
+}
+
+// link file 만드는 함수
+bool link_inode_create (disk_sector_t sector, char* path_name) {
+
+	struct inode_disk *disk_inode = NULL;
+	bool success = false;
+
+	ASSERT (strlen(path_name) >= 0);
+
+	/* If this assertion fails, the inode structure is not exactly
+	 * one sector in size, and you should fix that. */
+	ASSERT (sizeof *disk_inode == DISK_SECTOR_SIZE);
+
+	disk_inode = calloc (1, sizeof *disk_inode);
+	if (disk_inode != NULL) {
+		disk_inode->length = strlen(path_name) + 1;
+		disk_inode->magic = INODE_MAGIC;
+
+        // link file 여부 추가
+        disk_inode->is_dir = 0;
+        disk_inode->is_link = 1;
+
+        strlcpy(disk_inode->link_name, path_name, strlen(path_name) + 1);
+
+        cluster_t cluster = fat_create_chain(0);
+        if(cluster)
+        {
+            disk_inode->start = cluster;
+            disk_write (filesys_disk, cluster_to_sector(sector), disk_inode);
+            success = true;
+        }
+
+		free (disk_inode);
+	}
+	return success;
 }

@@ -201,7 +201,7 @@ bool create(const char *file, unsigned initial_size, bool isdir){
 	// 	exit(-1);
 	// }
 	check_address(file);
-	return filesys_create(file,initial_size,isdir);
+	return filesys_create(file,initial_size);
 }
 
 /* Project2-3 System Call */
