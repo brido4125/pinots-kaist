@@ -45,9 +45,10 @@ struct inode {
  * Returns -1 if INODE does not contain data for a byte at offset
  * POS. */
 static disk_sector_t byte_to_sector (const struct inode *inode, off_t pos) {
+	ASSERT (inode != NULL);
 	#ifdef EFILESYS
-		ASSERT (inode != NULL);
-		if (pos < inode->data.length){
+		if (pos < inode->data.length)
+
 			cluster_t cluster = sector_to_cluster(inode);
 			for (size_t i = 0; i < pos / DISK_SECTOR_SIZE; i++){
 				if(sector_to_cluster(i) == cluster){
@@ -86,7 +87,8 @@ inode_init (void) {
  * disk.
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
-bool
+// create시에는 lengh = 무조건0?
+bool 
 inode_create (disk_sector_t sector, off_t length) {
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
@@ -103,18 +105,38 @@ inode_create (disk_sector_t sector, off_t length) {
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
 		#ifdef EFILESYS
-			cluster_t start = fat_create_chain(0);
-			for (size_t i = 0; i < sectors; i++){
-				start = fat_create_chain(start);
+
+			cluster_t clst = sector_to_cluster(sector);
+			cluster_t newclst = clst; // 체이닝실패시 대비 저장
+
+			if(sectors==0){
+				disk_inode->start = cluster_to_sector(fat_create_chain(newclst));
 			}
+			// cluster_t start = fat_create_chain(0); // 추후확인  
+			// 창섭보험
+			for (int i = 0; i < sectors; 1++){
+				newclst = fat_create_chain(newlist);
+				if(newclst ==0){
+					fat_remove_chain(clst,0);
+					free(disk_inode);
+					return false;
+				}	
+				if (i == 0){
+					clst = newclst;
+					disk_inode->start = cluster_to_sector(newclst); //파일의 시작 포인트
+				}
+			}
+
 			disk_write (filesys_disk, sector, disk_inode);
 				if (sectors > 0) {
 					static char zeros[DISK_SECTOR_SIZE];
 					size_t i;
 
-					for (i = 0; i < sectors; i++) 
-						disk_write (filesys_disk, disk_inode->start + i, zeros); 
+					for (i = 0; i < sectors; i++) {
+						disk_write (filesys_disk,cluster_to_sector(clst), zeros); // 연속적이지 않기 때문에 클러스터에 매칭되는 섹터를 찾아준다.
+						clst=fat_get(clst);  // 다음 클러스터 == 섹터
 				}
+			}
 				success = true; 
 		#else
 			if (free_map_allocate (sectors, &disk_inode->start)) {
