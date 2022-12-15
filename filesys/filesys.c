@@ -7,7 +7,7 @@
 #include "filesys/inode.h"
 #include "filesys/directory.h"
 #include "devices/disk.h"
-
+#include "filesys/fat.h"
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
 
@@ -57,21 +57,29 @@ filesys_done (void) {
  * Returns true if successful, false otherwise.
  * Fails if a file named NAME already exists,
  * or if internal memory allocation fails. */
-bool
-filesys_create (const char *name, off_t initial_size) {
-	disk_sector_t inode_sector = 0;
-	struct dir *dir = dir_open_root ();
-	bool success = (dir != NULL
-			// && free_map_allocate (1, &inode_sector)
-			&& inode_create (inode_sector, initial_size)
-			&& dir_add (dir, name, inode_sector));
-	if (!success && inode_sector != 0)
-		free_map_release (inode_sector, 1);
-	dir_close (dir);
+bool filesys_create(const char *name, off_t initial_size)
+{
+    //------project4-start------------------------
+    cluster_t new_cluster = fat_create_chain(0);
+    disk_sector_t inode_sector = cluster_to_sector(new_cluster);
+    struct dir *dir = dir_open_root();
+    bool success = (dir != NULL && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
+    if (!success && new_cluster != 0) {
+        fat_remove_chain(new_cluster, 0);
+    }
+    dir_close(dir);
+    //------project4-end--------------------------
+    ////// 기존 코드 start
+    // disk_sector_t inode_sector = 0;
+    // struct dir *dir = dir_open_root();
+    // bool success = (dir != NULL && free_map_allocate(1, &inode_sector) && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
+    // if (!success && inode_sector != 0)
+    //  free_map_release(inode_sector, 1);
+    // dir_close(dir);
+    ////// 기존 코드 end
 
-	return success;
+    return success;
 }
-
 /* Opens the file with the given NAME.
  * Returns the new file if successful or a null pointer
  * otherwise.
@@ -110,6 +118,9 @@ do_format (void) {
 #ifdef EFILESYS
 	/* Create FAT and save it to the disk. */
 	fat_create ();
+	if (!dir_create (cluster_to_sector(ROOT_DIR_CLUSTER), 16)){
+		PANIC ("root directory creation failed");
+	}
 	fat_close ();
 #else
 	free_map_create ();
