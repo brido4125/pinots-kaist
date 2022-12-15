@@ -244,42 +244,98 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	uint8_t *buffer = buffer_;
 	off_t bytes_read = 0;
 	uint8_t *bounce = NULL;
+	#ifdef EFILESYS
+			/* Disk sector to read, starting byte offset within sector. */
+			disk_sector_t sector_idx = byte_to_sector (inode, offset) + size;
+			int sector_ofs = offset % DISK_SECTOR_SIZE;
 
-	while (size > 0) {
-		/* Disk sector to read, starting byte offset within sector. */
-		disk_sector_t sector_idx = byte_to_sector (inode, offset);
-		int sector_ofs = offset % DISK_SECTOR_SIZE;
+			/* Bytes left in inode, bytes left in sector, lesser of the two. */
+			off_t inode_left = inode_length (inode) - offset;
+			int sector_left = DISK_SECTOR_SIZE - sector_ofs;
+			int min_left = inode_left < sector_left ? inode_left : sector_left;
 
-		/* Bytes left in inode, bytes left in sector, lesser of the two. */
-		off_t inode_left = inode_length (inode) - offset;
-		int sector_left = DISK_SECTOR_SIZE - sector_ofs;
-		int min_left = inode_left < sector_left ? inode_left : sector_left;
-
-		/* Number of bytes to actually copy out of this sector. */
-		int chunk_size = size < min_left ? size : min_left;
-		if (chunk_size <= 0)
-			break;
-
-		if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE) {
-			/* Read full sector directly into caller's buffer. */
-			disk_read (filesys_disk, sector_idx, buffer + bytes_read); 
-		} else {
-			/* Read sector into bounce buffer, then partially copy
-			 * into caller's buffer. */
-			if (bounce == NULL) {
-				bounce = malloc (DISK_SECTOR_SIZE);
-				if (bounce == NULL)
-					break;
+			int left_size;//다른 클러스터에 저장
+			if(size >= min_left){
+				left_size = size - min_left;
 			}
-			disk_read (filesys_disk, sector_idx, bounce);
-			memcpy (buffer + bytes_read, bounce + sector_ofs, chunk_size);
-		}
+			int cluster_cnt;
+			if(left_size > CLUSTER_SIZE){
+				if(left_size % CLUSTER_SIZE == 0 ){
+					cluster_cnt = left_size / CLUSTER_SIZE;
+				}else{
+					cluster_cnt = (left_size / CLUSTER_SIZE) + 1;
+				}
+			}else{
+				cluster_cnt = 1;
+			}
 
-		/* Advance. */
-		size -= chunk_size;
-		offset += chunk_size;
-		bytes_read += chunk_size;
-	}
+			/* Number of bytes to actually copy out of this sector. */
+			int chunk_size = size < min_left ? size : min_left;
+			if (chunk_size <= 0)
+				return 0;
+
+			if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE) {
+				/* Read full sector directly into caller's buffer. */
+				disk_read (filesys_disk, sector_idx, buffer + bytes_read); 
+			} else {
+				/* Read sector into bounce buffer, then partially copy
+				* into caller's buffer. */
+				if (bounce == NULL) {
+					bounce = malloc (DISK_SECTOR_SIZE);
+					if (bounce == NULL)
+						return 0;
+				}
+				disk_read (filesys_disk, sector_idx, bounce);
+				memcpy (buffer + bytes_read, bounce + sector_ofs, chunk_size);
+
+				cluster_t start_cluster = sector_to_cluster(sector_idx);
+				for (size_t i = 0; i < cluster_cnt; i++){
+					cluster_t next = fat_create_chain(start_cluster);
+					disk_sector_t next_sector = cluster_to_sector(next);
+					disk_write (filesys_disk, next_sector, buffer + chunk_size + CLUSTER_SIZE * i); 
+				}
+			}
+			/* Advance. */
+			bytes_read += size;
+	#else
+		while (size > 0) {
+			/* Disk sector to read, starting byte offset within sector. */
+			disk_sector_t sector_idx = byte_to_sector (inode, offset);
+			int sector_ofs = offset % DISK_SECTOR_SIZE;
+
+			/* Bytes left in inode, bytes left in sector, lesser of the two. */
+			off_t inode_left = inode_length (inode) - offset;
+			int sector_left = DISK_SECTOR_SIZE - sector_ofs;
+			int min_left = inode_left < sector_left ? inode_left : sector_left;
+
+			/* Number of bytes to actually copy out of this sector. */
+			int chunk_size = size < min_left ? size : min_left;
+			if (chunk_size <= 0)
+				break;
+
+			if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE) {
+				/* Read full sector directly into caller's buffer. */
+				disk_read (filesys_disk, sector_idx, buffer + bytes_read); 
+			} else {
+				/* Read sector into bounce buffer, then partially copy
+				* into caller's buffer. */
+				if (bounce == NULL) {
+					bounce = malloc (DISK_SECTOR_SIZE);
+					if (bounce == NULL)
+						break;
+				}
+				disk_read (filesys_disk, sector_idx, bounce);
+				memcpy (buffer + bytes_read, bounce + sector_ofs, chunk_size);
+
+
+
+			}
+			/* Advance. */
+			size -= chunk_size;
+			offset += chunk_size;
+			bytes_read += chunk_size;
+		}
+	#endif
 	free (bounce);
 
 	return bytes_read;
