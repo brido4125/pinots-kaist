@@ -47,16 +47,16 @@ struct inode {
 static disk_sector_t byte_to_sector (const struct inode *inode, off_t pos) {
 	#ifdef EFILESYS
 		ASSERT (inode != NULL);
-		if (pos < inode->data.length)
+		if (pos < inode->data.length){
 			cluster_t cluster = sector_to_cluster(inode);
-			for (size_t i = 0; i < pos / DISK_SECTOR_SIZE; i++)
-			{
+			for (size_t i = 0; i < pos / DISK_SECTOR_SIZE; i++){
 				if(sector_to_cluster(i) == cluster){
 					return cluster_to_sector(i);
 				}
 			}
-		else
+		}else{
 			return -1;
+		}
 	#else
 		ASSERT (inode != NULL);
 		if (pos < inode->data.length)
