@@ -47,7 +47,7 @@ struct inode {
 static disk_sector_t byte_to_sector (const struct inode *inode, off_t pos) {
 	ASSERT (inode != NULL);
 	#ifdef EFILESYS
-		if (pos < inode->data.length)
+		if (pos < inode->data.length){
 
 			cluster_t cluster = sector_to_cluster(inode);
 			for (size_t i = 0; i < pos / DISK_SECTOR_SIZE; i++){
@@ -114,8 +114,8 @@ inode_create (disk_sector_t sector, off_t length) {
 			}
 			// cluster_t start = fat_create_chain(0); // 추후확인  
 			// 창섭보험
-			for (int i = 0; i < sectors; 1++){
-				newclst = fat_create_chain(newlist);
+			for (int i = 0; i < sectors; i++){
+				newclst = fat_create_chain(newclst);
 				if(newclst ==0){
 					fat_remove_chain(clst,0);
 					free(disk_inode);
@@ -341,7 +341,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 			/* Number of bytes to actually write into this sector. */
 			int chunk_size = size < min_left ? size : min_left;
 			if (chunk_size <= 0)
-				break;
+				return 0;
 			//file의 처음부터 섹터 사이즈 만큼 write
 			if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE) {
 				/* Write full sector directly to disk. */
@@ -351,7 +351,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 				if (bounce == NULL) {
 					bounce = malloc (DISK_SECTOR_SIZE);
 					if (bounce == NULL)
-						break;
+						return 0;
 				}
 				/* If the sector contains data before or after the chunk
 				we're writing, then we need to read in the sector
