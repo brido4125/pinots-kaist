@@ -296,11 +296,23 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 	off_t bytes_written = 0;
 	uint8_t *bounce = NULL;
 
+	// bool grow = false; // 이 파일이 extend할 파일인지 체크 flag
+	uint8_t zero[DISK_SECTOR_SIZE]; // buffer for zero padding
+	
+	// 해당 파일이 write작업을 허용하지 않으면 0을 리턴
 	if (inode->deny_write_cnt)
 		return 0;
-	#ifdef ESYSFILE
+
+	// inode의 데이터 영역에 충분한 공간이 있는지 check wirte가 끝나는 지점(offset+size)까지 공간 있는지 check 없다면 -1리턴
+
+
+	//file growth
+	//디스크에 충분한 공간이 없다면 파일을 늘린다 (extend)
+	// 확장할 때 EOF부터 write를 끝내는 지점까지의 모든 데이터를 0으로 초기화(memset)
+	#ifdef EFILESYS
 			/* Sector to write, starting byte offset within sector. */
-			disk_sector_t sector_idx = byte_to_sector (inode, offset);
+			disk_sector_t sector_idx = byte_to_sector (inode, offset+size);
+
 			cluster_t current_cluster =  sector_to_cluster(sector_idx);
 			int sector_ofs = offset % DISK_SECTOR_SIZE;
 
@@ -354,17 +366,17 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 				for (size_t i = 0; i < cluster_cnt; i++){
 					cluster_t next = fat_create_chain(start_cluster);
 					disk_sector_t next_sector = cluster_to_sector(next);
-					disk_write (filesys_disk, next_sector, buffer + (chunk_size * (i + 1))); 
+					disk_write (filesys_disk, next_sector, buffer + chunk_size + CLUSTER_SIZE * i); 
 				}
 
 			}
 			/* Advance. */
 			bytes_written += size;
 	#else
+		disk_sector_t sector_idx = byte_to_sector (inode, offset);
+		
 		while (size > 0) {
 			/* Sector to write, starting byte offset within sector. */
-			disk_sector_t sector_idx = byte_to_sector (inode, offset);
-			cluster_t current_cluster =  sector_to_cluster(sector_idx);
 			int sector_ofs = offset % DISK_SECTOR_SIZE;
 
 			/* Bytes left in inode, bytes left in sector, lesser of the two. */
@@ -405,6 +417,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		}
 	#endif
 	free (bounce);
+
+	disk_write(filesys_disk, inode->sector, &inode->data);
 
 	return bytes_written;
 }
