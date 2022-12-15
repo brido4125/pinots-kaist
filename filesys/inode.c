@@ -6,9 +6,12 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "filesys/fat.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
+
+cluster_t sector_to_cluster(struct inode* inode);
 
 /* On-disk inode.
  * Must be exactly DISK_SECTOR_SIZE bytes long. */
@@ -40,13 +43,31 @@ struct inode {
  * INODE.
  * Returns -1 if INODE does not contain data for a byte at offset
  * POS. */
-static disk_sector_t
-byte_to_sector (const struct inode *inode, off_t pos) {
-	ASSERT (inode != NULL);
-	if (pos < inode->data.length)
-		return inode->data.start + pos / DISK_SECTOR_SIZE;
-	else
-		return -1;
+static disk_sector_t byte_to_sector (const struct inode *inode, off_t pos) {
+	#ifdef EFILESYS
+		ASSERT (inode != NULL);
+		if (pos < inode->data.length)
+			cluster_t cluster = sector_to_cluster(inode);
+			for (size_t i = 0; i < pos / DISK_SECTOR_SIZE; i++)
+			{
+				if(sector_to_cluster(i) == cluster){
+					return cluster_to_sector(i);
+				}
+			}
+		else
+			return -1;
+	#else
+		ASSERT (inode != NULL);
+		if (pos < inode->data.length)
+			return inode->data.start + pos / DISK_SECTOR_SIZE;
+		else
+			return -1;
+	#endif
+	
+}
+
+cluster_t sector_to_cluster(struct inode* inode){
+	return inode->data.start - inode->sector * SECTORS_PER_CLUSTER;
 }
 
 /* List of open inodes, so that opening a single inode twice
