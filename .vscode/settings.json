@@ -12,6 +12,7 @@
         "loader.h": "c",
         "vm.h": "c",
         "mmu.h": "c",
-        "gdt.h": "c"
+        "gdt.h": "c",
+        "fat.h": "c"
     }
 }
