@@ -46,6 +46,7 @@ dir_open (struct inode *inode) {
  * Return true if successful, false on failure. */
 struct dir *
 dir_open_root (void) {
+	
 	return dir_open (inode_open (ROOT_DIR_SECTOR));
 }
 
