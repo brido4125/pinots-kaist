@@ -184,45 +184,44 @@ fat_create_chain (cluster_t clst) {
 	return index;
 }
 
-/* Remove the chain of clusters starting from CLST.
- * If PCLST is 0, assume CLST as the start of the chain. */
-// void
-// fat_remove_chain (cluster_t clst, cluster_t pclst) {
-// 	/* TODO: Your code goes here. */
-// 	while (fat_get(clst) != EOChain)
-// 	{
-// 		int tmp = clst;
-// 		clst = fat_get(clst);
-// 		fat_put(tmp,0);
-// 	}
-// 	fat_put(clst,0);
-// 	fat_put(pclst,EOChain);
-// 	ASSERT(fat_get(pclst) == EOChain);
-// }
-
+/* Remove the chain of clusters starting from CLST.*/
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
     /* TODO: Your code goes here. */
-    // clst에서 시작하여, 체인에서 클러스터들을 제거합니다.
-    // pclst는 체인에서 clst의 바로 이전 클러스터여야 합니다.
-    // 즉, 이 함수가 실행된 후에,pclst는 업데이트된 체인의 마지막 요소가 될 것입니다.
-    // 만약 clst가 체인의 첫 요소라면, pclst는 0이 되어야 합니다.
-    if(pclst != 0) {    // clst가 체인의 첫 요소가 아니라면 if문 진입
-        // pclst는 체인에서 clst의 바로 이전 클러스터여야 함
-        if(fat_get(pclst) != clst) {
+	cluster_t next_clst;
+	cluster_t tmp = clst;
+
+	if(pclst == 0){
+		while (true){
+			next_clst = fat_get(clst);
+			fat_put(clst,0);
+			if(next_clst==EOChain)
+				break;
+			clst = next_clst;
+		}
+		fat_put(tmp,0);
+		fat_put(next_clst,0);
+	}
+	else{
+		if(fat_get(pclst) != clst) {
             return;
         }
-        // pclst가 체인의 마지막 요소가 되어야 함
-        fat_put(pclst, EOChain);
-    }
-    // clst부터 체인에서 클러스터를 제거함
-    while(true) {
-        cluster_t next_clst = fat_get(clst);
-        fat_put(clst, 0);   // clst의 val을 0으로 바꾼다.
-        if (next_clst == EOChain) break;    // 마지막 클러스터이라면 break
-        clst = next_clst;
-    }
+		while (true){
+			next_clst = fat_get(clst);
+			fat_put(clst,0);
+			if(next_clst==EOChain)
+				break;
+			clst = next_clst;
+		}
+		fat_put(tmp,0);
+		fat_put(next_clst,0);
+		fat_put(pclst,EOChain);
+		printf("pclst-======%d\n",pclst);
+		printf("clst-======%d\n",clst);
+
+	}
 }
+
 
 /* Update a value in the FAT table. */
 void
