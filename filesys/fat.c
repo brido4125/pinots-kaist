@@ -180,6 +180,7 @@ fat_create_chain (cluster_t clst) {
 	while (fat_get(clst) != EOChain)
 	{
 		clst = fat_get(clst);
+		
 	}
 	fat_put(clst,index);
 	return index;
@@ -189,6 +190,7 @@ fat_create_chain (cluster_t clst) {
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
     /* TODO: Your code goes here. */
+	cluster_t start = clst;
 	cluster_t next_clst;
 	// if(pclst!=0){
 	// 	while (true){
@@ -200,11 +202,11 @@ fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	// 	}
 	// 	fat_put(pclst,EOChain);
 	// } 
-	else if(pclst == 0){
-		for (clst; fat_get(clst)!=EOChain; clst=next_clst){
-			next_clst = fat_get(clst);
-			fat_put(clst,0);
-			printf("clst%d\n",clst);
+	if(pclst == 0){
+		for (start; fat_get(start)!=EOChain; start=next_clst){
+			next_clst = fat_get(start);
+			fat_put(start,0);
+			//printf("clst%d\n",start);
 		}
 		// while (true){
 		// 	// printf("clst%d\n", clst);
