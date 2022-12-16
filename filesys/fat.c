@@ -190,25 +190,35 @@ void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
     /* TODO: Your code goes here. */
 	cluster_t next_clst;
-	if(pclst!=0){
-		while (true){
+	// if(pclst!=0){
+	// 	while (true){
+	// 		next_clst = fat_get(clst);
+	// 		fat_put(clst,0);
+	// 		if(next_clst==EOChain)
+	// 			break;
+	// 		clst = next_clst;
+	// 	}
+	// 	fat_put(pclst,EOChain);
+	// } 
+	else if(pclst == 0){
+		for (clst; fat_get(clst)!=EOChain; clst=next_clst){
 			next_clst = fat_get(clst);
 			fat_put(clst,0);
-			if(next_clst==EOChain)
-				break;
-			clst = next_clst;
+			printf("clst%d\n",clst);
 		}
-		fat_put(pclst,EOChain);
-	} 
-	if(pclst == 0){
-		while (true){
-			next_clst = fat_get(clst);
-			fat_put(clst,0);
-			clst = next_clst;
-			if(next_clst == EOChain){
-				break;
-			}				
-		}
+		// while (true){
+		// 	// printf("clst%d\n", clst);
+		// 	// fat_put(clst,0);
+		// 	// clst = fat_get(clst);
+		// 	next_clst = fat_get(clst);
+		// 	fat_put(clst,0);
+		// 	clst = next_clst;
+		// 	if(next_clst == EOChain){
+		// 		printf("cl13123st%d\n", clst);
+		// 	printf("pcls223132131t%d\n", pclst);
+		// 		break;
+		// 	}				
+		// }
 	}
 }
 
@@ -216,7 +226,7 @@ fat_remove_chain (cluster_t clst, cluster_t pclst) {
 void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
-	ASSERT(clst >= 1);
+	// ASSERT(clst >= 1);
 	fat_fs->fat[clst] = val;
 }
 
@@ -224,7 +234,7 @@ fat_put (cluster_t clst, cluster_t val) {
 cluster_t
 fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
-	ASSERT(clst >= 1);
+	// ASSERT(clst >= 1);
 	return fat_fs->fat[clst];
 }
 
