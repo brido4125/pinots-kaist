@@ -164,6 +164,7 @@ fat_fs_init (void) {
 /* Add a cluster to the chain.
  * If CLST is 0, start a new chain.
  * Returns 0 if fails to allocate a new cluster. */
+
 cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
@@ -189,39 +190,27 @@ void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
     /* TODO: Your code goes here. */
 	cluster_t next_clst;
-	cluster_t tmp = clst;
-
+	if(pclst!=0){
+		while (true){
+			next_clst = fat_get(clst);
+			fat_put(clst,0);
+			if(next_clst==EOChain)
+				break;
+			clst = next_clst;
+		}
+		fat_put(pclst,EOChain);
+	} 
 	if(pclst == 0){
 		while (true){
 			next_clst = fat_get(clst);
 			fat_put(clst,0);
-			if(next_clst==EOChain)
-				break;
 			clst = next_clst;
-		}
-		fat_put(tmp,0);
-		fat_put(next_clst,0);
-	}
-	else{
-		if(fat_get(pclst) != clst) {
-            return;
-        }
-		while (true){
-			next_clst = fat_get(clst);
-			fat_put(clst,0);
-			if(next_clst==EOChain)
+			if(next_clst == EOChain){
 				break;
-			clst = next_clst;
+			}				
 		}
-		fat_put(tmp,0);
-		fat_put(next_clst,0);
-		fat_put(pclst,EOChain);
-		printf("pclst-======%d\n",pclst);
-		printf("clst-======%d\n",clst);
-
 	}
 }
-
 
 /* Update a value in the FAT table. */
 void
