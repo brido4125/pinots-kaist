@@ -60,7 +60,7 @@ filesys_done (void) {
  * or if internal memory allocation fails. */
 bool
 filesys_create (const char *name, off_t initial_size) {
-	cluster_t clst = fat_creata_chain(0);
+	cluster_t clst = fat_create_chain(0);
 	disk_sector_t inode_sector = cluster_to_sector(clst);
 	struct dir *dir = dir_open_root ();
 	bool success = (dir != NULL && inode_create (inode_sector, initial_size) && dir_add (dir, name, inode_sector));
