@@ -34,5 +34,6 @@ void fat_remove_chain (
 cluster_t fat_get (cluster_t clst);
 void fat_put (cluster_t clst, cluster_t val);
 disk_sector_t cluster_to_sector (cluster_t clst);
+cluster_t sector_to_cluster (disk_sector_t sector);
 
 #endif /* filesys/fat.h */

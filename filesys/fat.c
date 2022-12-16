@@ -153,6 +153,8 @@ fat_boot_create (void) {
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
+	fat_fs->fat_length = fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE/(sizeof(cluster_t)*SECTORS_PER_CLUSTER);
+	fat_fs->data_start = fat_fs->bs.fat_start+fat_fs->bs.fat_sectors;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -165,29 +167,87 @@ fat_fs_init (void) {
 cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	int index = 2;
+	while (fat_fs->fat[index] != 0 && index < fat_fs->fat_length)
+	{
+		index++;
+	}
+	fat_put(index,EOChain);
+	if(clst == 0){
+		return index;
+	}
+	while (fat_get(clst) != EOChain)
+	{
+		clst = fat_get(clst);
+	}
+	fat_put(clst,index);
+	return index;
 }
 
 /* Remove the chain of clusters starting from CLST.
  * If PCLST is 0, assume CLST as the start of the chain. */
+// void
+// fat_remove_chain (cluster_t clst, cluster_t pclst) {
+// 	/* TODO: Your code goes here. */
+// 	while (fat_get(clst) != EOChain)
+// 	{
+// 		int tmp = clst;
+// 		clst = fat_get(clst);
+// 		fat_put(tmp,0);
+// 	}
+// 	fat_put(clst,0);
+// 	fat_put(pclst,EOChain);
+// 	ASSERT(fat_get(pclst) == EOChain);
+// }
+
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
-	/* TODO: Your code goes here. */
+    /* TODO: Your code goes here. */
+    // clst에서 시작하여, 체인에서 클러스터들을 제거합니다.
+    // pclst는 체인에서 clst의 바로 이전 클러스터여야 합니다.
+    // 즉, 이 함수가 실행된 후에,pclst는 업데이트된 체인의 마지막 요소가 될 것입니다.
+    // 만약 clst가 체인의 첫 요소라면, pclst는 0이 되어야 합니다.
+    if(pclst != 0) {    // clst가 체인의 첫 요소가 아니라면 if문 진입
+        // pclst는 체인에서 clst의 바로 이전 클러스터여야 함
+        if(fat_get(pclst) != clst) {
+            return;
+        }
+        // pclst가 체인의 마지막 요소가 되어야 함
+        fat_put(pclst, EOChain);
+    }
+    // clst부터 체인에서 클러스터를 제거함
+    while(true) {
+        cluster_t next_clst = fat_get(clst);
+        fat_put(clst, 0);   // clst의 val을 0으로 바꾼다.
+        if (next_clst == EOChain) break;    // 마지막 클러스터이라면 break
+        clst = next_clst;
+    }
 }
 
 /* Update a value in the FAT table. */
 void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
+	ASSERT(clst >= 1);
+	fat_fs->fat[clst] = val;
 }
 
 /* Fetch a value in the FAT table. */
 cluster_t
 fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	ASSERT(clst >= 1);
+	return fat_fs->fat[clst];
 }
 
 /* Covert a cluster # to a sector number. */
 disk_sector_t
 cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	return fat_fs->data_start + (clst * SECTORS_PER_CLUSTER);
+}
+
+cluster_t sector_to_cluster (disk_sector_t sector){
+	
+	return sector - (fat_fs->data_start * SECTORS_PER_CLUSTER);
 }
