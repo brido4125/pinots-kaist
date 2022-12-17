@@ -189,37 +189,38 @@ fat_create_chain (cluster_t clst) {
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
     /* TODO: Your code goes here. */
-	cluster_t next_clst;
-	// if(pclst!=0){
-	// 	while (true){
-	// 		next_clst = fat_get(clst);
-	// 		fat_put(clst,0);
-	// 		if(next_clst==EOChain)
-	// 			break;
-	// 		clst = next_clst;
-	// 	}
-	// 	fat_put(pclst,EOChain);
-	// } 
-	else if(pclst == 0){
-		for (clst; fat_get(clst)!=EOChain; clst=next_clst){
-			next_clst = fat_get(clst);
-			fat_put(clst,0);
-			printf("clst%d\n",clst);
-		}
-		// while (true){
-		// 	// printf("clst%d\n", clst);
-		// 	// fat_put(clst,0);
-		// 	// clst = fat_get(clst);
-		// 	next_clst = fat_get(clst);
-		// 	fat_put(clst,0);
-		// 	clst = next_clst;
-		// 	if(next_clst == EOChain){
-		// 		printf("cl13123st%d\n", clst);
-		// 	printf("pcls223132131t%d\n", pclst);
-		// 		break;
-		// 	}				
-		// }
-	}
+    cluster_t next_clst;
+    // print_fat();
+    if(pclst!=0){
+        while (true){
+            next_clst = fat_get(clst);
+            fat_put(clst,0);
+            if(next_clst==EOChain)
+                break;
+            clst = next_clst;
+        }
+        fat_put(pclst,EOChain);
+    }
+    else if(pclst == 0){
+    //  for (clst; fat_get(clst)!=EOChain; clst=next_clst){
+    //      next_clst = fat_get(clst);
+    //      fat_put(clst,0);
+    //      // printf("clst%d\n",clst);
+    //  }
+        while (true){
+            // printf("clst%d\n", clst);
+            // fat_put(clst,0);
+            // clst = fat_get(clst);
+            next_clst = fat_get(clst);
+            fat_put(clst,0);
+            clst = next_clst;
+            if(next_clst == EOChain){
+            //  printf("cl13123st%d\n", clst);
+            // printf("pcls223132131t%d\n", pclst);
+                break;
+            }
+        }
+    }
 }
 
 /* Update a value in the FAT table. */
@@ -248,4 +249,16 @@ cluster_to_sector (cluster_t clst) {
 cluster_t sector_to_cluster (disk_sector_t sector){
 	
 	return sector - (fat_fs->data_start * SECTORS_PER_CLUSTER);
+}
+
+void print_fat(){
+	printf("\n=========================FAT====================================================================================\n");
+	for(int i = 0; i < fat_fs->bs.fat_sectors; i++){
+		if(fat_fs->fat[i] == EOChain)
+			printf(" [%3d|EOC] ", i);
+		else
+			printf(" [%3d|%3d] ", i, fat_fs->fat[i]);
+		if(i%5 == 4) printf("\n");
+	}
+	printf("\n================================================================================================================\n");
 }

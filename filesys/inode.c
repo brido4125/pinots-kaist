@@ -95,29 +95,21 @@ inode_create (disk_sector_t sector, off_t length) {
 		#ifdef EFILESYS
 		
 		cluster_t clst = sector_to_cluster(sector); 
-		cluster_t newclst = clst; // save clst in case of chaining failure
 
-		if(sectors == 0) disk_inode->start = cluster_to_sector(fat_create_chain(newclst));
+		disk_inode->start = cluster_to_sector(fat_create_chain(0));
+		cluster_t newclst = sector_to_cluster(disk_inode->start); // save clst in case of chaining failure
 
-		for (int i = 0; i < sectors; i++){
+		for (int i = 1; i < sectors; i++){
 			newclst = fat_create_chain(newclst);
-			if (newclst == 0){ // chain 생성 실패 시 (fails to allocate a new cluster)
-				fat_remove_chain(clst, 0);
-				free(disk_inode);
-				return false;
-			}
-			if (i == 0){
-				clst = newclst;
-				disk_inode->start = cluster_to_sector(newclst); // set start point of the file
-			}
 		}
 		disk_write (filesys_disk, sector, disk_inode);
+		newclst = sector_to_cluster(disk_inode->start);
 		if (sectors > 0) {
 			static char zeros[DISK_SECTOR_SIZE];
 			for (int i = 0; i < sectors; i++){
-				ASSERT(clst != 0 || clst != EOChain);
-				disk_write (filesys_disk, cluster_to_sector(clst), zeros); // non-contiguous sectors 
-				clst = fat_get(clst); // find next cluster(=sector) in FAT
+				// ASSERT(clst != 0 || clst != EOChain);
+				disk_write (filesys_disk, cluster_to_sector(newclst), zeros); // non-contiguous sectors 
+				newclst = fat_get(newclst); // find next cluster(=sector) in FAT
 			}
 		}
 		success = true;
