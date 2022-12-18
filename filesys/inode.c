@@ -10,6 +10,7 @@
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
+#define EFILESYS
 
 /* On-disk inode.
  * Must be exactly DISK_SECTOR_SIZE bytes long. */
@@ -195,6 +196,7 @@ inode_close (struct inode *inode) {
 	if (--inode->open_cnt == 0) {
 		/* Remove from inode list and release lock. */
 		list_remove (&inode->elem);
+
 
 		/* Deallocate blocks if removed. */
 		if (inode->removed) {

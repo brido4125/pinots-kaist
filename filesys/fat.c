@@ -180,6 +180,7 @@ fat_create_chain (cluster_t clst) {
 	while (fat_get(clst) != EOChain)
 	{
 		clst = fat_get(clst);
+		
 	}
 	fat_put(clst,index);
 	return index;
