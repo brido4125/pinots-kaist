@@ -325,8 +325,12 @@ process_exit (void) {
 	}
 	palloc_free_multiple(curr->fd_table,FDT_PAGES);
 	file_close(curr->running);
-	process_cleanup ();//추후 실험 필요	
+	process_cleanup ();//추후 실험 필요
 	sema_up(&curr->wait_sema);
+	/* project4 추가 */
+	#ifdef EFILESYS
+	dir_close(thread_current()->cur_dir);
+	#endif
 	sema_down(&curr->free_sema);
 }
 

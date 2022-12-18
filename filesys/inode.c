@@ -18,6 +18,8 @@ struct inode_disk {
 	off_t length;                       /* File size in bytes. */
 	unsigned magic;                     /* Magic number. */
 	uint32_t unused[125];               /* Not used. */
+
+	uint32_t is_dir;					/* file = 0, directory = 1 */
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -77,7 +79,7 @@ inode_init (void) {
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
 bool
-inode_create (disk_sector_t sector, off_t length) {
+inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -92,6 +94,8 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
+		disk_inode->is_dir = is_dir;
+		
 		#ifdef EFILESYS
 		
 		cluster_t clst = sector_to_cluster(sector); 
@@ -159,7 +163,8 @@ inode_open (disk_sector_t sector) {
 	inode->open_cnt = 1;
 	inode->deny_write_cnt = 0;
 	inode->removed = false;
-	disk_read (filesys_disk, inode->sector, &inode->data);
+
+	disk_read (filesys_disk, cluster_to_sector(inode->sector), &inode->data);
 	return inode;
 }
 
@@ -471,3 +476,14 @@ off_t
 inode_length (const struct inode *inode) {
 	return inode->data.length;
 }
+
+bool inode_is_dir(const struct inode *inode){
+	bool result;
+	struct inode_disk *disk_inode = calloc (1, sizeof *disk_inode);
+	disk_read(filesys_disk, cluster_to_sector(inode->sector), disk_inode);
+
+	result = disk_inode->is_dir;
+	free(disk_inode);
+	return result;
+}
+
