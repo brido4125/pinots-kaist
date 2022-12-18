@@ -135,6 +135,7 @@ struct thread {
 	int stdin_count;
 	int stdout_count;
 
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -150,6 +151,7 @@ struct thread {
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
 	struct dir *cur_dir;
+	
 };
 
 /* If false (default), use round-robin scheduler.

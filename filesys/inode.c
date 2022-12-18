@@ -21,6 +21,8 @@ struct inode_disk {
 	uint32_t unused[125];               /* Not used. */
 
 	uint32_t is_dir;					/* file = 0, directory = 1 */
+	// uint32_t is_link;
+	// char link_name[492];
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -95,26 +97,28 @@ inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
+		#ifdef EFILESYS
 		disk_inode->is_dir = is_dir;
 		
-		#ifdef EFILESYS
-		
 		cluster_t clst = sector_to_cluster(sector); 
+		
 
 		disk_inode->start = cluster_to_sector(fat_create_chain(0));
-		cluster_t newclst = sector_to_cluster(disk_inode->start); // save clst in case of chaining failure
+
+		cluster_t newclst = sector_to_cluster(disk_inode->start);
 
 		for (int i = 1; i < sectors; i++){
 			newclst = fat_create_chain(newclst);
+			//printf("newclst = %d \n",newclst);
 		}
 		disk_write (filesys_disk, sector, disk_inode);
 		newclst = sector_to_cluster(disk_inode->start);
 		if (sectors > 0) {
 			static char zeros[DISK_SECTOR_SIZE];
 			for (int i = 0; i < sectors; i++){
-				// ASSERT(clst != 0 || clst != EOChain);
 				disk_write (filesys_disk, cluster_to_sector(newclst), zeros); // non-contiguous sectors 
 				newclst = fat_get(newclst); // find next cluster(=sector) in FAT
+				//printf("clst = %d\n",clst);
 			}
 		}
 		success = true;
@@ -264,6 +268,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 
 	return bytes_read;
 }
+
 
 // off_t
 // inode_write_at (struct inode *inode, const void *buffer_, off_t size,
