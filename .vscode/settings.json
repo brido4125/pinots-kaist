@@ -15,6 +15,7 @@
         "gdt.h": "c",
         "filesys.h": "c",
         "interrupt.h": "c",
-        "inode.h": "c"
+        "inode.h": "c",
+        "file.h": "c"
     }
 }

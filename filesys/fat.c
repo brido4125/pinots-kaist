@@ -9,7 +9,7 @@
 /* Should be less than DISK_SECTOR_SIZE */
 struct fat_boot {
 	unsigned int magic;
-	unsigned int sectors_per_cluster; /* Fixed to 1 */
+	unsigned int sectors_per_cluster; /* Fixed to 1 */ 
 	unsigned int total_sectors;
 	unsigned int fat_start;
 	unsigned int fat_sectors; /* Size of FAT in sectors. */

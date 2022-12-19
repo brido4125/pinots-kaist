@@ -106,43 +106,47 @@ filesys_create (const char *name, off_t initial_size) {
  * otherwise.
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
-struct file *
-filesys_open (const char *name) {
-	#ifdef EFILESYS
-	struct dir *dir = NULL;
+struct file *filesys_open (const char *name) {
+    #ifdef EFILESYS
+
+    // name의 파일경로를 cp_name에 복사
+    char* cp_name = (char *)malloc(strlen(name) + 1);
+    char* file_name = (char *)malloc(strlen(name) + 1);
+
+    struct dir* dir = NULL;
+    struct inode *inode = NULL;
+
+    while(true) {
+        strlcpy(cp_name, name, strlen(name) + 1);
+        // cp_name의경로분석
+        dir = parse_path(cp_name, file_name);
+
+        if (dir != NULL) {
+            dir_lookup(dir, file_name, &inode);
+            if(inode) {   // 파일이 존재하고, 링크 파일인 경우
+                dir_close(dir);
+                continue;
+            }
+        }
+        free(cp_name);
+        free(file_name);
+        dir_close(dir);
+        break;
+    }
+    return file_open(inode);
+
+    #else
+
+	struct dir *dir = dir_open_root ();
 	struct inode *inode = NULL;
 
-	const char *cp_name = (char *)malloc(strlen(name) + 1); // 생성하고자 하는 파일의 경로
-	const char *file_name = (char *)malloc(strlen(name) + 1); // 생성하고자 하는 파일의 이름
+	if (dir != NULL)
+		dir_lookup (dir, name, &inode);
+	dir_close (dir);
 
-	while(true){
-		strlcpy(cp_name, name, strlen(name) + 1);
-		dir = parse_path(cp_name, file_name);
+	return file_open (inode);
 
-		if(dir != NULL){
-			dir_lookup(dir, file_name, &inode);
-			if(inode){
-				dir_close(dir);
-				continue;
-			}
-		}
-		free(cp_name);
-		free(file_name);
-		dir_close(dir);
-		break;
-	}
-	return file_open(inode);
-
-	#else
-		struct dir *dir = dir_open_root();
-		struct inode *inode = NULL;
-
-		if (dir != NULL)
-			dir_lookup (dir, name, &inode);
-		dir_close (dir);
-
-		return file_open (inode);
-	#endif
+    #endif
 }
 
 /* Deletes the file named NAME.
@@ -227,38 +231,49 @@ do_format (void) {
 }
 
 
-bool filesys_create_dir(const char *name){
-	bool success = false;
+bool filesys_create_dir(const char* name) {
 
-	char *cp_name = (char *)malloc(strlen(name) + 1);
-	strlcpy(cp_name, name, strlen(name) + 1);
+    bool success = false;
 
-	char *file_name = (char *)malloc(strlen(name) + 1);
-	struct dir *dir = parse_path(cp_name, file_name);
+    // name의 파일경로를 cp_name에복사
+    char* cp_name = (char *)malloc(strlen(name) + 1);
+    strlcpy(cp_name, name, strlen(name) + 1);
 
-	cluster_t inode_cluster = fat_create_chain(0);
-	struct inode *sub_dir_inode;
-	struct dir *sub_dir = NULL;
+    // name 경로분석
+    char* file_name = (char *)malloc(strlen(name) + 1);
+    struct dir* dir = parse_path(cp_name, file_name);
 
-	success = (
-				dir != NULL
-				&& dir_create(inode_cluster, 16)
-				&& dir_add(dir, file_name, inode_cluster)
-				&& dir_lookup(dir, file_name, &sub_dir_inode)
-				&& dir_add(sub_dir = dir_open(sub_dir_inode), ".", inode_cluster)
-				&& dir_add(sub_dir, "..", inode_get_inumber(dir_get_inode(dir))));				
 
-	if(!success && inode_cluster != 0){
-		fat_remove_chain(inode_cluster, 0);
+    // bitmap에서 inode sector 번호 할당
+    cluster_t inode_cluster = fat_create_chain(0);
+    struct inode *sub_dir_inode;
+    struct dir *sub_dir = NULL;
+
+
+    /* 할당 받은 sector에 file_name의 디렉터리 생성
+	   디렉터리 엔트리에 file_name의 엔트리 추가
+       디렉터리 엔트리에 ‘.’, ‘..’ 파일의 엔트리 추가 */
+    success = (		// ".", ".." 추가
+                dir != NULL
+            	&& dir_create(inode_cluster, 16)
+            	&& dir_add(dir, file_name, inode_cluster)
+            	&& dir_lookup(dir, file_name, &sub_dir_inode)
+            	&& dir_add(sub_dir = dir_open(sub_dir_inode), ".", inode_cluster)
+            	&& dir_add(sub_dir, "..", inode_get_inumber(dir_get_inode(dir))));
+
+
+    if (!success && inode_cluster != 0) {
+        fat_remove_chain(inode_cluster, 0);
 	}
 
-	dir_close(sub_dir);
-	dir_close(dir);
+    dir_close(sub_dir);
+    dir_close(dir);
 
-	free(cp_name);
-	free(file_name);
-	return success;
+    free(cp_name);
+    free(file_name);
+    return success;
 }
+
 
 // 경로 분석 함수 구현
 struct dir *parse_path(char *path_name, char *file_name) {  // file_name: path_name을 분석하여 파일, 디렉터리의 이름을 포인팅

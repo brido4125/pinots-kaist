@@ -14,16 +14,16 @@
 
 /* On-disk inode.
  * Must be exactly DISK_SECTOR_SIZE bytes long. */
-struct inode_disk {
-	disk_sector_t start;                /* First data sector. */
-	off_t length;                       /* File size in bytes. */
-	unsigned magic;                     /* Magic number. */
-	uint32_t unused[125];               /* Not used. */
+// struct inode_disk {
+// 	disk_sector_t start;                /* First data sector. */
+// 	off_t length;                       /* File size in bytes. */
+// 	unsigned magic;                     /* Magic number. */
+// 	uint32_t unused[125];               /* Not used. */
 
-	uint32_t is_dir;					/* file = 0, directory = 1 */
-	// uint32_t is_link;
-	// char link_name[492];
-};
+// 	uint32_t is_dir;					/* file = 0, directory = 1 */
+// 	uint32_t is_link;
+// 	char link_name[492];
+// };
 
 /* Returns the number of sectors to allocate for an inode SIZE
  * bytes long. */
@@ -33,14 +33,14 @@ bytes_to_sectors (off_t size) {
 }
 
 /* In-memory inode. */
-struct inode {
-	struct list_elem elem;              /* Element in inode list. */
-	disk_sector_t sector;               /* Sector number of disk location. */
-	int open_cnt;                       /* Number of openers. */
-	bool removed;                       /* True if deleted, false otherwise. */
-	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
-	struct inode_disk data;             /* Inode content. */
-};
+// struct inode {
+// 	struct list_elem elem;              /* Element in inode list. */
+// 	disk_sector_t sector;               /* Sector number of disk location. */
+// 	int open_cnt;                       /* Number of openers. */
+// 	bool removed;                       /* True if deleted, false otherwise. */
+// 	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
+// 	struct inode_disk data;             /* Inode content. */
+// };
 
 /* Returns the disk sector that contains byte offset POS within
  * INODE.
@@ -85,7 +85,6 @@ bool
 inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
-
 	ASSERT (length >= 0);
 
 	/* If this assertion fails, the inode structure is not exactly
