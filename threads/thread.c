@@ -129,6 +129,7 @@ thread_init (void) {
 	lgdt (&gdt_ds);
 
 	/* Init the global thread context */
+
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&sleep_list);
@@ -142,7 +143,7 @@ thread_init (void) {
 	initial_thread->tid = allocate_tid ();
 
 	#ifdef EFILESYS
-	initial_thread->cur_dir = NULL;
+		initial_thread->cur_dir = NULL;
 	#endif
 }
 
@@ -225,9 +226,9 @@ thread_create (const char *name, int priority,
 
 	/* project4 추가 */
 	#ifdef EFILESYS
-	if(thread_current()->cur_dir != NULL){
-		t->cur_dir = dir_reopen(thread_current()->cur_dir);
-	}
+		if(thread_current()->cur_dir != NULL){
+			t->cur_dir = dir_reopen(thread_current()->cur_dir);
+		}
 	#endif
 
 	/* Call the kernel_thread if it scheduled.

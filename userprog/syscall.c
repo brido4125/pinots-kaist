@@ -43,6 +43,9 @@ void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
 struct page* check_address(void *addr);
 bool chdir(const char *path_name);
 bool mkdir(const char *dir);
+bool readdir(int fd, char *name);
+bool isdir(int fd);
+struct cluster_t *sys_inumber(int fd);
 
 /* System call.
  *
@@ -538,7 +541,9 @@ bool chdir(const char *path_name){
 }
 
 bool mkdir(const char *dir){
+
 	return filesys_create_dir(dir);
+
 }
 
 bool readdir(int fd, char *name){
