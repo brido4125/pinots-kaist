@@ -12,6 +12,7 @@
 #include "threads/vaddr.h"
 #include "intrinsic.h"
 #include "threads/fixed_point.h"
+#include "filesys/directory.h"
 
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -128,6 +129,7 @@ thread_init (void) {
 	lgdt (&gdt_ds);
 
 	/* Init the global thread context */
+
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&sleep_list);
@@ -139,6 +141,10 @@ thread_init (void) {
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
+
+	#ifdef EFILESYS
+		initial_thread->cur_dir = NULL;
+	#endif
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -217,6 +223,13 @@ thread_create (const char *name, int priority,
 	/* Initialize thread. */
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
+
+	/* project4 추가 */
+	#ifdef EFILESYS
+		if(thread_current()->cur_dir != NULL){
+			t->cur_dir = dir_reopen(thread_current()->cur_dir);
+		}
+	#endif
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */

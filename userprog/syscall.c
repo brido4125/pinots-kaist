@@ -14,6 +14,8 @@
 #include "lib/string.h"
 #include "threads/palloc.h"
 #include "vm/vm.h"
+#include "filesys/directory.h"
+#include "filesys/inode.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -39,6 +41,11 @@ void * mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
 struct page* check_address(void *addr);
+bool chdir(const char *path_name);
+bool mkdir(const char *dir);
+bool readdir(int fd, char *name);
+bool isdir(int fd);
+struct cluster_t *sys_inumber(int fd);
 
 /* System call.
  *
@@ -488,4 +495,98 @@ void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write){
         if(to_write == true && page->writable == false)
             exit(-1);
     }
+}
+
+bool chdir(const char *path_name){
+	if(path_name == NULL){
+		return false;
+	}
+
+	char *cp_name = (char *)malloc(strlen(path_name) + 1);
+	strlcpy(cp_name, path_name, strlen(path_name) + 1);
+
+	struct dir *chdir = NULL;
+
+	if(cp_name[0] == '/'){
+		chdir = dir_open_root();
+	} else {
+		chdir = dir_reopen(thread_current()->cur_dir);
+	}
+
+	char *token, *savePtr;
+	token = strtok_r(cp_name, "/", &savePtr);
+
+	struct inode *inode = NULL;
+	while (token != NULL)
+	{
+		if(!dir_lookup(chdir, token, &inode)){
+			dir_close(chdir);
+			return false;
+		}
+		if(!inode_is_dir(inode)){
+			dir_close(chdir);
+			return false;
+		}
+		dir_close(chdir);
+
+		chdir = dir_open(inode);
+
+		token = strtok_r(NULL, "/", &savePtr);
+	}
+
+	dir_close(thread_current()->cur_dir);
+	thread_current()->cur_dir = chdir;
+	free(cp_name);
+	return true;
+}
+
+bool mkdir(const char *dir){
+
+	return filesys_create_dir(dir);
+
+}
+
+bool readdir(int fd, char *name){
+	if(name == NULL){
+		return false;
+	}
+	struct file *target = find_file(fd);
+
+	if(target == NULL){
+		return false;
+	}
+
+
+	if(!inode_is_dir(file_get_inode(target))){
+		return false;
+	}
+
+	struct dir *p_file = target;
+	if(p_file->pos == 0){
+		dir_seek(p_file, 2 * sizeof(struct dir_entry));
+	}
+
+	bool result = dir_readdir(p_file, name);
+	return result;
+}
+
+bool isdir(int fd){
+	struct file *file = find_file(fd);
+	if(file == NULL){
+		return false;
+	}
+	return inode_is_dir(file_get_inode(file));
+}
+
+int inumber(int fd){
+
+}
+
+struct cluster_t *sys_inumber(int fd){
+	struct file *target = find_file(fd);
+
+	if(target == NULL){
+		return false;
+	}
+	return inode_get_inumber(file_get_inode(target));
 }

@@ -9,7 +9,7 @@
 /* Should be less than DISK_SECTOR_SIZE */
 struct fat_boot {
 	unsigned int magic;
-	unsigned int sectors_per_cluster; /* Fixed to 1 */
+	unsigned int sectors_per_cluster; /* Fixed to 1 */ 
 	unsigned int total_sectors;
 	unsigned int fat_start;
 	unsigned int fat_sectors; /* Size of FAT in sectors. */
@@ -153,6 +153,8 @@ fat_boot_create (void) {
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
+	fat_fs->fat_length = fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE/(sizeof(cluster_t)*SECTORS_PER_CLUSTER);
+	fat_fs->data_start = fat_fs->bs.fat_start+fat_fs->bs.fat_sectors;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -162,32 +164,102 @@ fat_fs_init (void) {
 /* Add a cluster to the chain.
  * If CLST is 0, start a new chain.
  * Returns 0 if fails to allocate a new cluster. */
+
 cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	int index = 2;
+	while (fat_fs->fat[index] != 0 && index < fat_fs->fat_length)
+	{
+		index++;
+	}
+	fat_put(index,EOChain);
+	if(clst == 0){
+		return index;
+	}
+	while (fat_get(clst) != EOChain)
+	{
+		clst = fat_get(clst);
+		
+	}
+	fat_put(clst,index);
+	return index;
 }
 
-/* Remove the chain of clusters starting from CLST.
- * If PCLST is 0, assume CLST as the start of the chain. */
+/* Remove the chain of clusters starting from CLST.*/
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
-	/* TODO: Your code goes here. */
+    /* TODO: Your code goes here. */
+    cluster_t next_clst;
+    // print_fat();
+    if(pclst!=0){
+        while (true){
+            next_clst = fat_get(clst);
+            fat_put(clst,0);
+            if(next_clst==EOChain)
+                break;
+            clst = next_clst;
+        }
+        fat_put(pclst,EOChain);
+    }
+    else if(pclst == 0){
+    //  for (clst; fat_get(clst)!=EOChain; clst=next_clst){
+    //      next_clst = fat_get(clst);
+    //      fat_put(clst,0);
+    //      // printf("clst%d\n",clst);
+    //  }
+        while (true){
+            // printf("clst%d\n", clst);
+            // fat_put(clst,0);
+            // clst = fat_get(clst);
+            next_clst = fat_get(clst);
+            fat_put(clst,0);
+            clst = next_clst;
+            if(next_clst == EOChain){
+            //  printf("cl13123st%d\n", clst);
+            // printf("pcls223132131t%d\n", pclst);
+                break;
+            }
+        }
+    }
 }
 
 /* Update a value in the FAT table. */
 void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
+	// ASSERT(clst >= 1);
+	fat_fs->fat[clst] = val;
 }
 
 /* Fetch a value in the FAT table. */
 cluster_t
 fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	// ASSERT(clst >= 1);
+	return fat_fs->fat[clst];
 }
 
 /* Covert a cluster # to a sector number. */
 disk_sector_t
 cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	return fat_fs->data_start + (clst * SECTORS_PER_CLUSTER);
+}
+
+cluster_t sector_to_cluster (disk_sector_t sector){
+	
+	return sector - (fat_fs->data_start * SECTORS_PER_CLUSTER);
+}
+
+void print_fat(){
+	printf("\n=========================FAT====================================================================================\n");
+	for(int i = 0; i < fat_fs->bs.fat_sectors; i++){
+		if(fat_fs->fat[i] == EOChain)
+			printf(" [%3d|EOC] ", i);
+		else
+			printf(" [%3d|%3d] ", i, fat_fs->fat[i]);
+		if(i%5 == 4) printf("\n");
+	}
+	printf("\n================================================================================================================\n");
 }

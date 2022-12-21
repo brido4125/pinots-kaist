@@ -12,6 +12,10 @@
         "loader.h": "c",
         "vm.h": "c",
         "mmu.h": "c",
-        "gdt.h": "c"
+        "gdt.h": "c",
+        "filesys.h": "c",
+        "interrupt.h": "c",
+        "inode.h": "c",
+        "file.h": "c"
     }
 }
